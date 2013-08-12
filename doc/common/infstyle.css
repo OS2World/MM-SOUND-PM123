@@ -1,0 +1,23 @@
+em {
+  font-style: normal;
+  color: blue;
+}
+strong {
+  color: red;
+}
+a:link {
+  color: purple;
+}
+h1, h2, h3, h4 {
+  font-family: Arial,Helvetica,sans-serif;
+}
+tr {
+  vertical-align: baseline;
+}
+th {
+  background-color: #eeeeee;
+  text-align: left;
+}
+sub, sup {
+  font-size: smaller;
+}

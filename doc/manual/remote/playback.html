@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html sublinks="error.html">
+<head>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+  <title>Playback control commands</title>
+  <link rel="stylesheet" href="../../common/infstyle.css"
+ type="text/css">
+</head>
+<body>
+<h2>PM123's Remote command reference - Playback control</h2>
+<p>PM123 currently understands the following
+commands for controlling the playback engine. Optional parameters are
+enclosed in square brackets.</p>
+<table border="1" cellpadding="5" cellspacing="0">
+  <tbody>
+    <tr style="font-family: monospace;">
+      <th width="30%">Command</th>
+      <th width="55%">Description</th>
+      <th width="15">Reply</th>
+    </tr>
+    <tr>
+      <td><tt><a name="load"></a>load&nbsp;<var>&lt;url&gt;&nbsp;</var></tt>[<tt><var>&lt;url&gt;</var></tt>
+[...]] <small><sup><a href="playback.html#note2">(2.)</a></sup></small></td>
+      <td>Loads one or more <a href="../urlformat.html">file
+or URL</a>
+into the player. Any currently playing item will be aborted.<br>
+Specifying
+more than one file is equivalent to dropping multiple items on the
+player. This implicitly modifies the default playlist. The file names
+may be enclosed in double quotes (<tt>"</tt>).</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="play"></a>play </tt>[<tt><var>&lt;url&gt;&nbsp;</var></tt>[<tt><var>&lt;url&gt;</var></tt>
+[...]]] <small><sup><a href="playback.html#note2">(2.)</a></sup></small></td>
+      <td>Starts playing.<br>
+If at least one <a href="../urlformat.html">file or URL</a>
+was specified, it will be first loaded and playback will be started.
+See <a href="#load"><tt>load</tt></a> for details.
+Any currently playing item will be aborted.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="load"></a>enqueue <var>&lt;url&gt;&nbsp;</var></tt>[<tt><var>&lt;url&gt;</var></tt>
+[...]] <small><sup><a href="playback.html#note2">(2.)</a></sup></small></td>
+      <td>Plays a set of <a href="../urlformat.html">files
+or URLs</a>
+after the current playback has completed. This command will always
+append to the default playlist. If the default playlist is not yet in
+use it is cleared and the currently loaded object is placed as first
+element if any. This will never intercept any active playback.<br>
+The file names
+may be enclosed in double quotes (<tt>"</tt>).</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="invoke"></a>invoke </tt>[<tt><var>&lt;url&gt;&nbsp;</var></tt>[<tt><var>&lt;url&gt;</var></tt>
+[...]]] <small><sup><a href="playback.html#note2">(2.)</a></sup></small></td>
+      <td valign="top">Same as <a href="#play"><tt>play</tt></a> if "<a
+ href="../settings1.html">play on load</a>" is set, same as <a
+ href="#load"><tt>load</tt></a> otherwise.</td>
+      <td valign="top">Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="stop"></a>stop</tt></td>
+      <td>Stops playback.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="pause"></a>pause </tt>[<tt>on</tt>|<tt>off</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td>Pauses or resumes the playback.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="rewind"></a>rewind </tt>[<tt>on</tt>|<tt>off</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td>Toggles or (re)sets rewind of the currently playing
+file. If rewind is activated fast forward is implicitly deactivated.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="forward"></a>forward </tt>[<tt>on</tt>|<tt>off</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td>Toggles or (re)sets fast forward of the currently
+playing file. If fast forward is activated rewind is implicitly
+deactivated.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="next"></a>next </tt>[<var><tt>&lt;count&gt;</tt></var>]
+      <small><sup><a href="#note2">(2.)</a></sup></small></td>
+      <td>Selects the next song in playlist. If <var><tt>&lt;count&gt;</tt></var>
+is specified, you can skip more than one song at once.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="prev"></a>prev </tt>[<var><tt>&lt;count&gt;</tt></var>]
+      <small><sup><a href="#note2">(2.)</a></sup></small><br>
+      <tt><a name="previous"></a></tt><tt>previous </tt>[<var><tt>&lt;count&gt;</tt></var>]</td>
+      <td>Selects the previous song in playlist. If <var><tt>&lt;count&gt;</tt></var>
+is specified, you can skip more than one song at once.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt>jump <var>&lt;n&gt;</var></tt></td>
+      <td>Jump to <tt><var>&lt;n&gt;</var></tt>
+seconds in the currently playing file. <tt><var>&lt;n&gt;</var></tt>
+may be a fractional number.<br>
+Note that <tt>jump</tt>
+is not reliable in playlist mode, because the currently playing song
+may change just before jump is executed. You should prefer <a
+ href="playback.html#navigate"><tt>navigate</tt></a> in this case. This
+can restore
+the previous song in doubt.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="navigate"></a></tt><tt>navigate </tt>[<tt>/;</tt>|<tt>..;</tt>|<tt>.;</tt>]
+[<tt><var>&lt;item&gt;</var></tt><tt>;</tt>[<tt><var>&lt;sub&nbsp;item&gt;</var></tt><tt>;</tt>[...]]]
+[<tt><var>&lt;time&gt;</var></tt>[<tt>%</tt>]]</td>
+      <td colspan="1" rowspan="1">Navigate within
+the currently loaded playlist. Examples:<br>
+'<tt>navigate /;D:\songs\song1.mp3</tt>' navigates to
+the start of the song within the currently loaded playlist. If the file
+is referenced twice, the first instance is taken. <tt>navigate</tt>
+uses the <a href="../location.html">location string</a>
+syntax.<br>
+'<tt>navigate D:\songs\song1.mp3;1:02.7</tt>'
+navigates to location 62.7 seconds within the next occurrence of <tt>D:\songs\song1.mp3</tt>.</td>
+      <td colspan="1" rowspan="1">Result code,
+non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="savestream"></a>savestream </tt>[<var><tt>&lt;file&gt;</tt></var>]</td>
+      <td>Save stream to the specified file (if the decoder
+supports that). <tt>savestream</tt> without a file
+argument stops saving a stream.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="volume"></a>volume </tt>[[<tt>+</tt>|<tt>-</tt>]<tt><var>&lt;n&gt;</var></tt>]</td>
+      <td>Sets volume to <tt><var>&lt;n&gt;</var></tt>%
+(scale 0-100, of course). If a sign is included, <tt><var>&lt;n&gt;</var></tt>
+is added to the current volume level. If <tt><var>&lt;n&gt;</var></tt>
+is omitted the volume is unchanged.</td>
+      <td>Previous volume setting or empty on error.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="shuffle"></a>shuffle </tt>[<tt>on</tt>|<tt>off</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td>Toggles or (re)sets shuffling.</td>
+      <td>Result code,
+non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="repeat"></a>repeat </tt>[<tt>on</tt>|<tt>off</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td>Toggles or (re)sets repeat.</td>
+      <td>Result code,
+non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="query"></a>query play</tt> | <tt>pause</tt> | <tt>rewind</tt>
+| <tt>forward</tt> | <tt>repeat</tt> | <tt>shuffle</tt></td>
+      <td>Return whether the player is playing, paused, in rewind mode,
+in fast forward mode or whether repeat or shuffle is activated.</td>
+      <td>0 = off, 1 = on,<br>
+blank = error, invalid request</td>
+    </tr>
+    <tr>
+      <td><tt><a name="current"></a>current </tt>[<tt>song</tt>|<tt>root</tt>]</td>
+      <td>Query the current song or the currently loaded
+playlist. If only one song is curren<a href="playlist.html#pl_leave"><tt>pl
+leave</tt></a>
+- leave a (nested) playlist<a href="playlist.html#pl_leave"><tt>pl leave</tt></a>
+- leave a (nested) playlist<a href="playlist.html#pl_leave"><tt>pl leave</tt></a>
+- leave a (nested) playlist<a href="playlist.html#pl_leave"><tt>pl leave</tt></a>
+- leave a (nested) playlisttly loaded into the player <tt>current
+root</tt>
+will also return the song.<br>
+By default <tt>current</tt> returns the current song.</td>
+      <td>Current objects URL or empty if none.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="status"></a>status
+tag</tt>|<tt>file</tt>|<tt>info</tt></td>
+      <td>Returns the information currently displayed in the
+scroller or returns nothing if "no file loaded".<br>
+You should not use this command to access
+meta informations about the current song. Use the <tt><a
+ href="meta.html">info</a></tt>
+commands for this purpose.</td>
+      <td>Info string.</td>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="time"></a>time</tt></td>
+      <td valign="top">Return the current playing time from the start
+of the current song. This is the time displayed in the PM123 main
+window. If no playback
+is active and a resume position has been saved it is returned. <tt>time</tt>
+is the opposite of <a href="#jump"><tt>jump</tt></a>.</td>
+      <td valign="top">Playing time in seconds, -1 if not available or
+empty on error.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="location"></a>location</tt></td>
+      <td>Query the current playing location. In contrast to <tt>time</tt>
+      <tt>location</tt> always return a navigation string starting at
+the&nbsp; current root and ignoring any slices. <tt>location</tt> is
+the opposite of <a href="#navigate"><tt>navigate</tt></a>.</td>
+      <td><a href="../location.html">Location string</a> or empty if
+none.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Notes</h3>
+<ol>
+  <li>
+    <p><a name="note1"></a>All boolean
+parameters may use <tt>on</tt>, <tt>1</tt>, <tt>true</tt> or <tt>yes</tt>
+for the
+logical value <em>true</em>, <tt>off</tt>, <tt>0</tt>, <tt>false</tt>
+or <tt>no</tt> for <em>false</em> and <tt>toggle</tt> or no argument
+to flip the current setting.</p>
+  </li>
+  <li>
+    <p><a name="note2"></a>If you pass relative URLs the path set with
+the <a href="general.html#cd">cd</a> command is used as root. Note
+that this does not apply to location string.</p>
+  </li>
+  <li>
+    <p><a name="note3"></a>In PM123 before
+version 1.40 the playlist manipulation
+commands always operate on the currently playing item. Now the new
+commands <a href="playlist.html#pl_prev"><tt>pl prev</tt></a>, <a
+ href="playlist.html#pl_next"><tt>pl
+next</tt></a>
+and <a href="playlist.html#pl_reset"><tt>pl reset</tt></a> are
+dedicated to
+playlist operations.</p>
+  </li>
+</ol>
+</body>
+</html>

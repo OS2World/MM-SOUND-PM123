@@ -1,0 +1,165 @@
+PM123 1.41 Source File Distribution
+
+Copyright 1997-2003 Samuel Audet
+                    Taneli LeppÑ
+Copyright 2004-2007 Dmitry A.Steklenev <glass@ptv.ru>
+Copyright 2005-2011 Marcel MÅller <pm123@maazl.de>
+
+
+Introduction
+============
+
+In this small README file, you will learn how to use this source file
+distribution to successfully compile PM123 from the sources.
+
+
+Tools Needed to Compile
+=======================
+
+You will need the following tools and libraries to compile PM123 via
+gcc:
+
+  gcc 3.3.5 csd 1
+  NASM
+  Operating System/2 Information Presentation Facility Compiler (included in to
+  IBM OS/2 Developer's Toolkit).
+  WarpIN (if you want to create an installation package)
+  Info-ZIP (if you want to create the ZIP package)
+
+Open IBM Visualage C++ is currently untested and likely to fail at some C++ codes.
+
+Open Watcom C++ is currently untested and likely to fail at some C++ codes.
+
+Also, I have been using cmd.exe at all times, so disable 4os2 or other cmd.exe
+replacement when using this distribution's makefiles.
+
+
+How to Compile
+==============
+
+You can use the following commands with the main makefile and NMAKE:
+
+all:         will compile EVERYTHING in "src"
+filename:    will compile that module (ie.: "pm123.exe", "analyzer.dll", etc)
+clean:       will clean up all the compiled binaries in "src"
+dist:        will do "distfiles", "distpackage" and "distzip"
+distfiles:   will copy all the needed binaries and files from "src", "doc" and
+             others into "dist\files"
+distpackage: will build the WarpIN packages from the files in "dist\files"
+distzip:     will build the ZIP file from the files in "dist\files"
+distclean:   will clean everything made by "dist"
+test:        will run some test cases against the PM123 core engine and it's
+             plug-ins.
+depend:      update unclude dependencies in makefiles
+
+You can also use all of the individual makefiles in each of the subdirectories
+of the "src" directory. Each of them contain an "all" and "clean" command.
+
+In all cases, you can add "DEBUG=1 DEBUG_LOG=1" to MAKE's command line to build
+a debug version of one of PM123's module. Example:
+
+   [c:\devel\pm123-1_2-src] nmake pm123.exe DEBUG=1 DEBUG_LOG=1
+
+Also you can add "TCP40=1" to MAKE's command line to build modules with
+TCP/IP v4.0 (16bit) support. Example:
+
+   [c:\devel\pm123-1_2-src] nmake all TCP40=1
+
+
+Directory Structure
+===================
+
+The directories are split as shown in the diagram below. "dist" contains the
+files needed to build the install packages, and the packages themselves once
+they are built. "doc" contains text files and the user manual in HTML format.
+"extra" contains files that are not part of pm123 per se. "pdk" (plug-in
+developer's kit) documentation to build new plug-ins. "src" contains all
+the source code of PM123.
+
+|
++- dist                 make dist places the distribution packages here
+|  +- files             make dist places the distribution files here
++- doc                  Documentation files
+|  +- common            Common documentation files like the change log
+|  +- developer         Documentation for PM123 developers
+|  |  +- images         Images for the above
+|  +- manual            The PM123 manual/help files
+|  |  +- images         Images for the above
+|  +- pdk               Documentation for plug-in developers
+|  +- src               Source files of documentation images
+|  +- tools             Tools for documentation build
++- extra                Some add-ons for external applications
+|  +- irc
+|  +- slider
++- src                  All PM123 source codes
+|  +- config            Common platform specific configuration data for build
+|  +- fft123            Port of libfftw, used by analyzer and realeq
+|  |  +- ...
+|  +- gbm123            Port of libgbm, used by PM123 and skinutil
+|  +- include           Common includes (only the most important ones)
+|  +- libmpg123         Port of libmpg123, used by mpg123 plug-in
+|  |  +- ...
+|  +- logformater       Perl scripts to analyze PM123 debug logs
+|  +- ogg123            Port of libogg, used by oggplay plug-in
+|  |  +- ...
+|  +- plug-ins          Source code of PM123 plug-ins
+|  |  +- analyzer       Visual spectrum analyzer
+|  |  +- cddaplay       CD playback with CDDB support
+|  |  +- foldr123       Open file system folders directly
+|  |  +- mpg123         MPEG audio decoder
+|  |  |  +- ...
+|  |  +- oggplay        Ogg Vorbis decoder
+|  |  +- os2audio       OS/2 DART sound output
+|  |  +- os2rec         OS/2 DART recording plug-in
+|  |  +- plist123       Playlist file reader/writer
+|  |  +- pulse123       PulseAudio client for PM123
+|  |  +- realeq         32 band equalizer
+|  |  +- wavout         WAV writer plug-in
+|  |  +- wavplay        Decoder for losless audio files (WAV and many more)
+|  +- pm123             Source of the PM123 core engine
+|  |  +- bmp            Bitmap ressources
+|  |  |  +- font1
+|  |  |  +- font2
+|  |  +- ico            Icon ressources
+|  +- pulseaudio        OS/2 port of PulseAudio
+|  |  +- libspeex       libspeex, required to build PulseAudio
+|  |  +- pulse          PulseAudio API
+|  |  +- pulsecore      PulseAudio core
+|  |  +- speex          Include files for libspeex
+|  +- skinutil          Utility to convert WinAmp 1.x skins and manage skins
+|  +- snd123            Port of libsndfile, used by wavplay
+|  +- utils             General utility functions
+|  |  +- cpp            General utility functions for C++ only
+|  |     +- container   Container classes for C++
+|  +- vrb123            Port of libvorbis, used by oggplay
+|  |  +- ...
+|  +- WPS               Installer for PMShell folder
+|  |  +- icons          Neat icons for PMShell
+|  +- xio123            Generic I/O module of PM123 and plug-ins
+|  +- zlb123            Port of zlib
++- test                 Test suite for PM123
+   +- data              Test data
+   +- temp              make test places temporary files here
+   +- work              make test places the executables here
+
+In the "extra" directory, there "irc" has some scripts for BitchX and ircii
+to display the playing songs in the IRC client window. "slider" is a small
+tool that uses PM123's pipe to control the volume of two instances of PM123.
+The volume of the first PM123 executed will follow the slider, and the
+second will go reverse, allowing to cross the sounds of two songs for DJs.
+
+In the "src" directory, all the source code of one module (one EXE or DLL)
+is found in a subdirectory of the same name as the module.  So pm123.exe's
+source code is found in "pm123" and realeq.dll's source code is found under
+"plug-ins\realeq".  Each directory has its own makefile, fully functional.
+
+
+
+Have fun!
+
+Samuel Audet and Taneli LeppÑ
+September 2003
+Dmitry A.Steklenev
+November 2007
+Marcel MÅller
+July 2011

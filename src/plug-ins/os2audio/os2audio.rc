@@ -1,0 +1,62 @@
+/*
+ * Copyright 1997-2003 Samuel Audet <guardia@step.polymtl.ca>
+ *                     Taneli Lepp� <rosmo@sektori.com>
+ * Copyright 2006-2008 Dmitry A.Steklenev <glass@ptv.ru>
+ * Copyright 2007-2012 Marcel Mueller
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *    1. Redistributions of source code must retain the above copyright notice,
+ *       this list of conditions and the following disclaimer.
+ *
+ *    2. Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *
+ *    3. The name of the author may not be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <os2.h>
+#include "os2audio.h"
+
+DLGTEMPLATE DLG_CONFIGURE 
+BEGIN
+	DIALOG "DART Output", DLG_CONFIGURE, -104, -56, 208, 124, FS_MOUSEALIGN, FCF_TITLEBAR | FCF_SYSMENU | FCF_CLOSEBUTTON
+	BEGIN
+		CONTROL " Sound device ", ID_NULL, 4, 74, 200, 47, WC_STATIC, SS_GROUPBOX | DT_LEFT | DT_MNEMONIC | WS_VISIBLE | WS_GROUP
+		PRESPARAMS PP_FONTNAMESIZE "9.WarpSans Bold"
+		CONTROL "", CB_DEVICE, 10, 68, 188, 42, WC_COMBOBOX, CBS_DROPDOWNLIST | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+		CONTROL "Sound device is ~shared", CB_SHARED, 10, 88, 188, 10, WC_BUTTON, BS_AUTOCHECKBOX | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+        CONTROL "Emulate ~logarithmic volume control", CB_LOGVOLUME, 10, 78, 188, 10, WC_BUTTON, BS_AUTOCHECKBOX | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+
+		CONTROL " Settings ", ID_NULL, 4, 28, 200, 45, WC_STATIC, SS_GROUPBOX | DT_LEFT | DT_MNEMONIC | WS_VISIBLE | WS_GROUP
+		PRESPARAMS PP_FONTNAMESIZE "9.WarpSans Bold"
+		CONTROL "Buffers", SB_BUFFERS, 10, 54, 33, 13, WC_SPINBUTTON, SPBS_MASTER | SPBS_NUMERICONLY | SPBS_JUSTRIGHT | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+		CONTROL "Number of buffers", ID_NULL, 46, 54, 124, 8, WC_STATIC, SS_TEXT | DT_LEFT | DT_TOP | DT_MNEMONIC | WS_VISIBLE
+		PRESPARAMS PP_FOREGROUNDCOLORINDEX , SYSCLR_MENUTEXT
+		CONTROL "Play ~48 kHz as 44.1 kHz", CB_48KLUDGE, 10, 42, 188, 10, WC_BUTTON, BS_AUTOCHECKBOX | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+		CONTROL "Disable high persicion ~playing position", CB_NOPRECPOS, 10, 32, 188, 10, WC_BUTTON, BS_AUTOCHECKBOX | WS_VISIBLE | WS_GROUP | WS_TABSTOP
+
+		PRESPARAMS PP_FOREGROUNDCOLORINDEX , SYSCLR_MENUTEXT
+		CONTROL "(C) 2000 Samuel Audet", ID_NULL, 90, 18, 110, 8, WC_STATIC, SS_TEXT | DT_LEFT | DT_VCENTER | DT_MNEMONIC | WS_VISIBLE | WS_GROUP
+		CONTROL "(C) 2006-2008 Dmitry A.Steklenev", ID_NULL, 90, 10, 110, 8, WC_STATIC, SS_TEXT | DT_VCENTER | DT_MNEMONIC | WS_VISIBLE
+		CONTROL "(C) 2007-2012 Marcel Mueller", ID_NULL, 90, 2, 110, 8, WC_STATIC, SS_TEXT | DT_VCENTER | DT_MNEMONIC | WS_VISIBLE
+
+		DEFPUSHBUTTON "~OK", DID_OK, 10, 6, 32, 12, WS_GROUP | WS_TABSTOP
+		PUSHBUTTON "~Cancel", DID_CANCEL, 50, 6, 32, 12
+	END
+
+END

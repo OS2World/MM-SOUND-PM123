@@ -1,0 +1,51 @@
+LIBRARY xio123 INITINSTANCE TERMINSTANCE
+DESCRIPTION 'PM123 XIO Library'
+PROTMODE
+DATA MULTIPLE NONSHARED LOADONCALL
+EXPORTS
+  xio_buffer_size          @1
+  xio_buffer_wait          @2
+  xio_http_proxy           @3
+  xio_http_proxy_auth      @5
+  xio_buffer_fill          @8
+  xio_connect_timeout      @9
+  xio_socket_timeout       @10
+
+  xio_set_buffer_size      @21
+  xio_set_buffer_wait      @22
+  xio_set_http_proxy       @23
+  xio_set_http_proxy_auth  @25
+  xio_set_observer         @27
+  xio_get_metainfo         @28
+  xio_can_seek             @29
+  xio_set_buffer_fill      @30
+  xio_set_connect_timeout  @31
+  xio_set_socket_timeout   @32
+  xio_set_metacallback     @33
+  xio_protocol             @34
+  xio_urlprotocol          @35
+
+  xio_fopen                @40
+  xio_fread                @41
+  xio_fwrite               @42
+  xio_fclose               @43
+  xio_ftell                @44
+  xio_fseek                @45
+  xio_fsize                @46
+  xio_fgets                @47
+  xio_fputs                @48
+  xio_fabort               @49
+  xio_rewind               @50
+  xio_errno                @51
+  xio_strerror             @52
+  xio_ftruncate            @53
+  xio_feof                 @54
+  xio_ferror               @55
+  xio_clearerr             @56
+  xio_fstat                @57
+
+  xio_ftelll               @60
+  xio_fseekl               @61
+  xio_fsizel               @62
+  xio_ftruncatel           @63
+  xio_fstatl               @64

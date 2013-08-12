@@ -1,0 +1,28 @@
+LIBRARY PULSE123 INITINSTANCE TERMINSTANCE
+DESCRIPTION 'Pulseaudio for PM123'
+PROTMODE
+DATA MULTIPLE NONSHARED LOADONCALL
+EXPORTS
+
+   output_init              @1
+   output_uninit            @2
+   output_command           @3
+   output_request_buffer    @4
+   output_commit_buffer     @5
+   output_playing_pos       @6
+   output_playing_data      @7
+   output_playing_samples   @8
+
+   plugin_query     @10
+   plugin_init      @11
+   plugin_configure    @12
+   decoder_getwizard @13
+
+   decoder_init     @21
+   decoder_uninit   @22
+   decoder_command  @23
+   decoder_event    @24
+   decoder_status   @25
+   decoder_length   @26
+   decoder_fileinfo @28
+   decoder_support  @29

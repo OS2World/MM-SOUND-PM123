@@ -1,0 +1,61 @@
+/*
+ * Copyright 2006-2011 Marcel Mueller
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *    1. Redistributions of source code must retain the above copyright notice,
+ *       this list of conditions and the following disclaimer.
+ *
+ *    2. Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *
+ *    3. The name of the author may not be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#define  INCL_WINSYS
+#define  INCL_WINBIDI
+#define  INCL_WINSTDDLGS
+#define  INCL_WINSTDSPIN
+#define  INCL_NLS
+#define  INCL_SW
+#include <os2.h>
+#include "os2rec.h"
+
+DLGTEMPLATE DLG_RECWIZZARD 
+{
+  DIALOG "Start Recording",         100,         44,  8, 212, 92, WS_VISIBLE,FCF_SYSMENU|FCF_TITLEBAR
+  {
+    LTEXT           "Device",       ST_DEVICE,    6, 78,  50,  8, DT_VCENTER|DT_MNEMONIC
+    COMBOBOX        "",             CB_DEVICE,   60, 42, 100, 44, CBS_DROPDOWNLIST|ES_ANY
+    LTEXT           "Share mode",   ST_SHARE,     6, 62,  50,  8, DT_VCENTER|DT_MNEMONIC
+    AUTORADIOBUTTON "shared",       RB_SHARE,    60, 62,  48,  8
+    AUTORADIOBUTTON "exclusive",    RB_EXCL,    112, 62,  48,  8
+    LTEXT           "Input",        IDS_NULL,     6, 50,  50,  8, DT_VCENTER|DT_MNEMONIC
+    AUTORADIOBUTTON "mic.",         RB_MIC,      60, 50,  48,  8
+    AUTORADIOBUTTON "line",         RB_LINE,    112, 50,  48,  8
+    AUTORADIOBUTTON "digital",      RB_DIGITAL, 164, 50,  48,  8
+    LTEXT           "Sampling rate",ST_SAMPRATE,  6, 34,  50,  8, DT_VCENTER|DT_MNEMONIC
+    SPINBUTTON                      SB_SAMPRATE, 60, 34,  48,  8, SPBS_MASTER|SPBS_NUMERICONLY|SPBS_JUSTRIGHT|WS_GROUP|WS_TABSTOP
+    LTEXT           "Hz",           IDS_NULL,   112, 34,  48,  8, DT_VCENTER|DT_MNEMONIC
+    LTEXT           "Channels",     ST_CHANNELS,  6, 22,  50,  8, DT_VCENTER|DT_MNEMONIC
+    AUTORADIOBUTTON "~mono",        RB_MONO,     60, 22,  48,  8
+    AUTORADIOBUTTON "~stereo",      RB_STEREO,  112, 22,  48,  8
+    DEFPUSHBUTTON   "OK",           DID_OK,       6,  4,  50, 12
+    PUSHBUTTON      "Cancel",       DID_CANCEL , 60,  4,  50, 12
+  }
+}
+

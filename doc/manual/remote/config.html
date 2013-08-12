@@ -1,0 +1,85 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html sublinks="options.html">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1">
+  <title>Configuration control commands</title>
+  <link type="text/css" href="../../common/infstyle.css" rel="stylesheet">
+</head>
+<body>
+<h2>PM123's Remote command reference - Configuration control</h2>
+<table border="1" cellpadding="5" cellspacing="0">
+  <tbody>
+    <tr>
+      <th>Command</th>
+      <th>Description</th>
+      <th>Reply</th>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="version"></a>version</tt> </td>
+      <td valign="top">Return the PM123 core version. </td>
+      <td valign="top"><tt>1.41 alpha 4 </tt>(for example) </td>
+    </tr>
+    <tr>
+      <td><tt><a name="option"></a>option&nbsp;</tt><tt><var>&lt;name&gt;</var></tt>[<tt>=</tt><var><tt>&lt;new&nbsp;value&gt;</tt></var>]</td>
+      <td>Sets or queries an <a href="options.html">option
+value</a>.&nbsp;If <var><tt>&lt;new
+value&gt;</tt></var> is missing only the current value is returned. </td>
+      <td>Previous setting or empty string on error.</td>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="default"></a>default</tt><tt> </tt><tt><var>&lt;name&gt;</var>
+      </tt>[<tt>reset</tt>|<tt>query</tt>]</td>
+      <td valign="top"><tt>reset</tt> or no subcommand: resets an <a
+ href="options.html">option
+value</a> to ist default.<br>
+      <tt>query</tt>: return the default value.</td>
+      <td valign="top">Previous setting, default value in case of sub
+command <tt>query</tt> or empty string on error.</td>
+    </tr>
+    <tr valign="baseline">
+      <td><tt><a name="autouse"></a>autouse </tt>[<tt>on</tt>|<tt>off</tt>|<tt>toggle</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td><i>Deprecated</i>, use <a href="options.html"><tt>option
+autouse</tt></a>.<br>
+Reads or sets '<i>auto use playlist on add</i>'. Without an argument
+only the current setting is returned.</td>
+      <td>Previous setting or empty string on error.</td>
+    </tr>
+    <tr valign="baseline">
+      <td><tt><a name="playonload"></a>playonload </tt>[<tt>on</tt>|<tt>off</tt>|<tt>toggle</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td><i>Deprecated</i>, use <a href="options.html"><tt>option
+playonload</tt></a>.<br>
+Reads or sets '<i>auto play on load</i>'. Without an argument only the
+current setting is returned.</td>
+      <td>Previous setting or empty string on error.</td>
+    </tr>
+    <tr valign="baseline">
+      <td><tt><a name="float"></a>float </tt>[<tt>on</tt>|<tt>off</tt>|<tt>toggle</tt>]
+      <small><sup><a href="#note1">(1.)</a></sup></small></td>
+      <td><i>Deprecated</i>, use <a href="options.html"><tt>option
+floatontop</tt></a>.<br>
+Reads or sets '<i>float on top</i>'. Without an argument only the
+current setting is returned.</td>
+      <td>Previous setting or empty string on error.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Notes&nbsp;</h3>
+<ol>
+  <li>
+    <p><a name="note1"></a>All boolean
+parameters may use <tt>on</tt>, <tt>1</tt>, <tt>true</tt> or <tt>yes</tt>
+for the
+logical value <em>true</em> and <tt>off</tt>, <tt>0</tt>, <tt>false</tt>
+or <tt>no</tt> for <em>false</em>. The token <tt>toggle</tt> flips
+the current setting.</p>
+  </li>
+  <li>
+    <p><a name="note2"></a>Plug-in types are <tt>decoder</tt>, <tt>filter</tt>,
+    <tt>output</tt> and <tt>visual</tt>. More than one type can be
+specified separated by comma.</p>
+  </li>
+</ol>
+</body>
+</html>

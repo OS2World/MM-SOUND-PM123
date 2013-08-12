@@ -1,0 +1,121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html sublinks="*">
+<head>
+  <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type">
+  <title>Playlist manipulation commands</title>
+  <link rel="stylesheet" href="../../common/infstyle.css"
+ type="text/css">
+  <meta content="Marcel Müller" name="author">
+</head>
+<body>
+<h2>PM123's Remote command reference - Playlist manipulation</h2>
+<p>The playlist manipulation commands can only operate on the currently
+loaded playlist. If you have navigated to a location in a nested
+playlist they will fail.</p>
+<table border="1" cellpadding="5" cellspacing="0">
+  <tbody>
+    <tr>
+      <th>Command</th>
+      <th>Description</th>
+      <th>Reply</th>
+    </tr>
+    <tr>
+      <td><a name="pl_clear"></a><tt>pl clear</tt><br>
+      <tt><a name="clear"></a>clear</tt><tt> </tt></td>
+      <td>Clears the current playlist.</td>
+      <td>Number of items in the list,<br>
+-1 if unknown,<br>
+Empty = error. </td>
+    </tr>
+    <tr>
+      <td><tt><a name="pl_add"></a>pl add&nbsp;<var>&lt;url&gt;</var></tt>&nbsp;[<tt><var>&lt;url&gt;</var></tt>
+[...]]<br>
+      <tt><a name="add"></a>add</tt> ... </td>
+      <td>Inserts <a href="../urlformat.html">URLs, files or
+directories</a> into
+the
+current playlist. The items are placed before the current item. If the
+current item is not set the
+new items are appended.<br>
+The names
+or URLs can be enclosed with double quotes. The operation is not atomic
+in case of an error.</td>
+      <td>Number of added items or empty on error.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="dir"></a>dir <var>&lt;directory&gt;</var></tt> <small><sup><a
+ href="#note1">(1.)</a></sup></small><tt><br>
+      <a name="rdir"></a>rdir <var>&lt;directory&gt;</var></tt><small><sup><a
+ href="playlistmodify.html#note1">(1.)</a></sup></small></td>
+      <td>Insert all supported files in <tt><var>&lt;directory&gt;</var></tt>
+and in case of <tt>rdir</tt> it's subdirectories into the playlist.
+The content is placed before the
+current item or appended, if the current item is not set.</td>
+      <td>Number of added items or empty on error.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="pl_remove"></a>pl remove</tt><br>
+      <tt> </tt><tt><a name="remove"></a>remove</tt> </td>
+      <td>Removes currently selected item from the current
+playlist.</td>
+      <td>URL of the removed item or empty line
+on error.</td>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="pl_setitem"></a>pl setitem </tt><tt><var>&lt;key&gt;</var></tt>[<tt>=<var>&lt;value&gt;</var></tt>]</td>
+      <td valign="top">Modify a property of a playlist item. See <a
+ href="meta.html#pl_info_item"><tt>pl info item</tt></a> for valid keys
+and
+syntax. </td>
+      <td valign="top">Empty = error.</td>
+    </tr>
+    <tr>
+      <td valign="top"><tt><a name="pl_sort"></a>pl sort display<br>
+pl sort song<br>
+pl sort artist<br>
+pl sort album<br>
+pl sort track<br>
+pl sort year<br>
+pl sort object<br>
+pl sort time<br>
+pl sort size</tt><tt><br>
+pl sort random</tt></td>
+      <td valign="top">Sort the content of the current playlist by the
+given criterion. The sort operation is stable, i.e. when sorting by
+album name the order of the songs of the same album is preserved. You
+might use this to sort by multiple properties, e.g. sort by the track
+first and by the album secondly. This effectively orders by album and
+then by track.</td>
+      <td valign="top">Empty = error.</td>
+    </tr>
+    <tr>
+      <td><tt><a name="pl_save"></a>pl save </tt>[<var><tt>&lt;file&gt;</tt></var>]<br>
+      <tt><a name="save"></a>save</tt> [<var><tt>&lt;file&gt;</tt></var>]
+      </td>
+      <td>Save the current playlist as <var><tt>&lt;file&gt;</tt></var>.
+If <var><tt>&lt;file&gt;</tt></var> is
+omitted the playlist is saved in place. The latter only works on
+mutable
+lists.</td>
+      <td>Result code, non-zero = <a href="error.html">error</a>.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Notes</h3>
+<ol>
+  <li>
+    <p><a name="note1"></a>The handling of the
+directories has significantly
+changed with PM123 1.40. The <tt>dir</tt> and <tt>rdir</tt> commands
+emulate the old behavior of PM123 by loading the desired directory
+structure into memory removing all files that have no decoder
+associated with their file type and then insert the remaining files
+into the current playlist.<br>
+Alternatively you could use <a href="#add"><tt>add</tt></a> to insert
+a reference to the directory instead. This has the side effect that the
+directory is rescanned every time
+the playlist is loaded into memory.</p>
+  </li>
+</ol>
+</body>
+</html>
