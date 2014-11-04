@@ -670,7 +670,8 @@ void CommandProcessor::XEnqueue()
 }
 
 void CommandProcessor::XInvoke()
-{ LoadHelper lh(Cfg::Get().playonload*LoadHelper::LoadPlay);
+{ const volatile amp_cfg& cfg = Cfg::Get();
+  LoadHelper lh(cfg.playonload*LoadHelper::LoadPlay | cfg.keeproot*LoadHelper::LoadKeepItem);
   Reply.appendd(!FillLoadHelper(lh, Request) ? Ctrl::RC_BadArg : lh.SendCommand());
 }
 
@@ -1550,10 +1551,11 @@ const strmap<16,CommandProcessor::Option> CommandProcessor::OptionMap[] =
 , { "floatontop",      &amp_cfg::floatontop     }
 , { "foldersfirst",    &amp_cfg::folders_first  }
 , { "font",            &CommandProcessor::DoFontOption }
+, { "keeproot",        &amp_cfg::keeproot       }
 , { "pipe",            &amp_cfg::pipe_name      }
-, { "pldefaultaction", &amp_cfg::itemaction     }
 , { "playlistwrap",    &amp_cfg::autoturnaround }
 , { "playonload",      &amp_cfg::playonload     }
+, { "plitemaction",    &amp_cfg::itemaction     }
 , { "proxyserver",     &amp_cfg::proxy          }
 , { "proxyauth",       &amp_cfg::auth           }
 , { "queueatcommand",  &amp_cfg::append_cmd     }

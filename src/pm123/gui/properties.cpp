@@ -66,6 +66,7 @@ class PropertyDialog : public NotebookDialogBase
     SettingsPageBase(PropertyDialog& parent, USHORT id)
     : PageBase(parent, id, NULLHANDLE, DF_AutoResize)
     {}
+   protected:
     virtual MRESULT DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2);
   };
   class Settings1Page : public SettingsPageBase
@@ -249,6 +250,7 @@ MRESULT PropertyDialog::Settings2Page::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2
     { const amp_cfg& cfg = *(const amp_cfg*)PVOIDFROMMP(mp1);
       // gcc parser error required + prefixes
       CheckBox(+GetCtrl(CB_AUTOUSEPL)).CheckState(cfg.autouse);
+      CheckBox(+GetCtrl(CB_KEEPROOT)).CheckState(cfg.keeproot);
       CheckBox(+GetCtrl(CB_AUTOSAVEPL)).CheckState(cfg.autosave);
       CheckBox(+GetCtrl(CB_RECURSEDND)).CheckState(cfg.recurse_dnd);
       CheckBox(+GetCtrl(CB_FOLDERSFIRST)).CheckState(cfg.folders_first);
@@ -262,6 +264,7 @@ MRESULT PropertyDialog::Settings2Page::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2
    case CFG_SAVE:
     { amp_cfg& cfg = *(amp_cfg*)PVOIDFROMMP(mp1);
       cfg.autouse = CheckBox(GetCtrl(CB_AUTOUSEPL)).CheckState();
+      cfg.keeproot = CheckBox(GetCtrl(CB_KEEPROOT)).CheckState();
       cfg.autosave = CheckBox(GetCtrl(CB_AUTOSAVEPL)).CheckState();
       cfg.recurse_dnd = CheckBox(GetCtrl(CB_RECURSEDND)).CheckState();
       cfg.folders_first = CheckBox(GetCtrl(CB_FOLDERSFIRST)).CheckState();
@@ -345,7 +348,7 @@ MRESULT PropertyDialog::PlaybackSettingsPage::DlgProc(ULONG msg, MPARAM mp1, MPA
     { MRESULT mr = SettingsPageBase::DlgProc(msg, mp1, mp2);
       SpinButton(+GetCtrl(SB_RG_PREAMP)).SetLimits(-12, +12, 3);
       SpinButton(+GetCtrl(SB_RG_PREAMP_OTHER)).SetLimits(-12, +12, 3);
-      SpinButton(+GetCtrl(SB_SCAN_SPEED)).SetItems(ScandSpeeds, sizeof ScandSpeeds / sizeof *ScandSpeeds);
+      SpinButton(+GetCtrl(SB_SCAN_SPEED)).SetArray(ScandSpeeds, sizeof ScandSpeeds / sizeof *ScandSpeeds);
       return mr;
     }
 
@@ -1024,6 +1027,7 @@ MRESULT PropertyDialog::PluginPage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
      case PB_PLG_SET:
       if ((size_t)i < List.size())
         SetParams(List[i]);
+      EnableCtrl(PB_PLG_SET, false);
       break;
     }
     return 0;
@@ -1051,12 +1055,12 @@ void PropertyDialog::DecoderPage::RefreshInfo()
     // TODO: Decoder supported file types vs. user file types.
     { const vector<const DECODER_FILETYPE>& filetypes = ((Decoder*)Selected.get())->GetFileTypes();
       size_t len = 0;
-      for (const DECODER_FILETYPE* const * ftp = filetypes.begin(); ftp != filetypes.end(); ++ftp)
+      foreach (const DECODER_FILETYPE,*const*, ftp, filetypes)
         if ((*ftp)->eatype)
           len += strlen((*ftp)->eatype) + 1;
       char* cp = (char*)alloca(len);
       char* cp2 = cp;
-      for (const DECODER_FILETYPE* const * ftp = filetypes.begin(); ftp != filetypes.end(); ++ftp)
+      foreach (const DECODER_FILETYPE,*const*, ftp, filetypes)
         if ((*ftp)->eatype)
         { strcpy(cp2, (*ftp)->eatype);
           cp2 += strlen((*ftp)->eatype);

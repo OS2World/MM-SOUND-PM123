@@ -1,6 +1,6 @@
 /*
  * Copyright 2004-2008 Dmitry A.Steklenev <glass@ptv.ru>
- *           2009-2011 Marcel Mueller
+ *           2009-2013 Marcel Mueller
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -101,7 +101,7 @@ bool FileTypesEnumerator::Next()
 }
 
 
-typedef strmapentry<stringset_own> AggregateEntry;
+typedef strmapentry<stringset> AggregateEntry;
 typedef sorted_vector<AggregateEntry,xstring,&AggregateEntry::compare> Aggregate;
 
 static void do_aggregate(Aggregate& dest, const char* key, const char* types)
@@ -114,9 +114,7 @@ static void do_aggregate(Aggregate& dest, const char* key, const char* types)
   { const char* cp = strchr(types, ';');
     xstring val(types, cp ? cp-types: strlen(types));
     DEBUGLOG(("filedlg:do_aggregate: %s\n", val.cdata()));
-    xstring*& elem = agg->Value.get(val);
-    if (elem == NULL)
-      elem = new xstring(val); // new entry
+    agg->Value.ensure(val);
     if (cp == NULL)
       return;
     types = cp+1;
@@ -141,14 +139,14 @@ APSZ_list* amp_file_types(DECODER_TYPE flagsreq)
 
   // Create result
   APSZ_list* result = new APSZ_list(40);
-  for (AggregateEntry*const* app = aggregate.begin(); app != aggregate.end(); ++app)
+  foreach (AggregateEntry,*const*, app, aggregate)
   { // Join extensions
     stringset& set = (*app)->Value;
     // Calculate length
     // The calculated length may be a few byte more than required, if either eatype or extensions are missing. 
     size_t len = (*app)->Key.length() + 3 + set.size()-1 +1; // EAtype + " ()" + delimiters + '\0'
-    for (xstring*const* xpp = set.end(); xpp-- != set.begin();)
-      len += (*xpp)->length();
+    for (const xstring* xpp = set.end(); xpp-- != set.begin();)
+      len += xpp->length();
     char* dp = new char[len];
     result->append() = dp;
     // Store EA type
@@ -163,13 +161,13 @@ APSZ_list* amp_file_types(DECODER_TYPE flagsreq)
     if (set.size())
     {both:
       *dp++ = '(';
-      xstring*const* xpp = set.begin();
+      const xstring* xpp = set.begin();
       goto start; // 1st item
       while (++xpp != set.end())
       { *dp++ = ';';
        start:
-        memcpy(dp, (*xpp)->cdata(), (*xpp)->length());
-        dp += (*xpp)->length();
+        memcpy(dp, xpp->cdata(), xpp->length());
+        dp += xpp->length();
       }
       *dp++ = ')';
     }
@@ -378,14 +376,20 @@ amp_file_dlg_proc( HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2 )
  * and returns the user's selection or selections.
  */
 
-HWND
-amp_file_dlg( HWND hparent, HWND howner, PFILEDLG filedialog )
+HWND DLLENTRY amp_file_dlg(HWND hparent, HWND howner, PFILEDLG filedialog)
 {
   filedialog->hMod       = NULLHANDLE;
-  filedialog->usDlgId    = DLG_FILE;
+  filedialog->usDlgId    = filedialog->ulUser & FDU_DIR_ONLY ? DLG_DIR : DLG_FILE;
   filedialog->pfnDlgProc = amp_file_dlg_proc;
   filedialog->fl        |= FDS_CUSTOM|FDS_ENABLEFILELB;
 
-  return WinFileDlg( hparent, howner, filedialog );
+  if (filedialog->ulUser & FDU_DIR_ONLY)
+  { size_t len = strlen(filedialog->szFullFile);
+    if (len && len < sizeof(filedialog->szFullFile) -1 && filedialog->szFullFile[len-1] != '\\')
+    { filedialog->szFullFile[len] = '\\';
+      filedialog->szFullFile[len+1] = 0;
+  } }
+
+  return WinFileDlg(hparent, howner, filedialog);
 }
 

@@ -84,6 +84,17 @@ typedef enum
   MSG_ERROR
 } MESSAGE_TYPE;
 
+/** file dialog additional flags for \c ulUser field. */
+enum FD_UserOpts
+{ FDU_NONE       = 0x00,
+  FDU_DIR_ENABLE = 0x01,
+  FDU_DIR_ONLY   = 0x02,
+  FDU_RECURSEBTN = 0x04,
+  FDU_RECURSE_ON = 0x08,
+  FDU_RELATIVBTN = 0x10,
+  FDU_RELATIV_ON = 0x20
+};
+
 /** return value of plugin_query. */
 typedef struct _PLUGIN_QUERYPARAM
 { int   type;         /**< PLUGIN_*. values can be ORed */
@@ -129,6 +140,16 @@ typedef struct
    * @remarks The function does not actually cause any I/O.
    * It is not reliable during plug-in initialization. */
   int DLLENTRYP(obj_supported)(const char* url, const char* type);
+
+  /** @brief Invoke PM123's resizable file dialog.
+   * @details This function creates and displays the file dialog
+   * and returns the user's selection or selections.
+   * Important note: \c filedialog->pszIType must point
+   * to a \e writable string of at least \c _MAX_PATH bytes.
+   * It contains the selected type on return.
+   * The ulUser field can be set to any FD_UserOpts values.
+   */
+  HWND DLLENTRYP(file_dlg)(HWND hparent, HWND howner, struct _FILEDLG* filedialog);
 } PLUGIN_API; 
 
 typedef struct
@@ -138,7 +159,7 @@ typedef struct
   void     DLLENTRYP(free_core)(char* p);
 
   /** Initialize a new xstring with a C string */
-  xstring  DLLENTRYP(create)   (const char* cstr);
+  struct xstring DLLENTRYP(create) (const char* cstr);
   /** Deallocate dynamic string. This will change the pointer to NULL. */
   void     DLLENTRYP(free)     (volatile xstring* dst);
   /** Return the length of a dynamic string */

@@ -30,14 +30,6 @@
 #include "container/stringmap.h"
 
 
-stringset_own& stringset_own::operator=(const stringset_own& r)
-{ clear();
-  prepare_assign(r.size());
-  vector_own_base_copy(*this, r.begin());
-  return *this;
-}
-
-
 int TFNENTRY strabbrevicmp(const char* str, const char* abbrev)
 { return strnicmp(str, abbrev, strlen(abbrev));
 }

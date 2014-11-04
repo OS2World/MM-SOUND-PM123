@@ -33,7 +33,7 @@ LOBJ_SUFFX =
 !ifdef DEBUG
 POSTLINKCMD = dllrname /Q /R $@ CPPOM30=OS2OM30
 !else
-POSTLINKCMD = dllrname /Q /R $@ CPPOM30=OS2OM30 && lxlite $@ /nbl /t /zs
+POSTLINKCMD = dllrname /Q /R $@ CPPOM30=OS2OM30 && lxlite $@ /nbl /t /zs && touch $@
 !endif
 LLIB_PREFX =
 LLIB_SUFFX =
@@ -107,5 +107,5 @@ all:    $(TARGET) $(MDUMMY)
 SRCFIL = *.cpp *.c
 !endif
 depend: $(MDUMMY)
-	$(TOPDIR)\config\makedep.cmd $(SRCFIL) -R -x -I$(INCDIR) -c -S -i
+	$(TOPDIR)\config\makedep.cmd $(SRCFIL) -R -x -I$(INCDIR) -c -s -i
 !endif

@@ -93,8 +93,8 @@ InfoFlags PlaylistManager::FilterRecordRequest(RecordBase* const rec, InfoFlags&
 { //DEBUGLOG(("PlaylistManager(%p)::FilterRecordRequest(%s, %x)\n", this, Record::DebugName(rec).cdata(), filter));
   if (rec)
   { filter &= ((Record*)rec)->Data()->Recursive // Do not request children of recursive records
-      ? IF_Tech|IF_Rpl|IF_Display|IF_Usage
-      : IF_Tech|IF_Rpl|IF_Display|IF_Usage|IF_Child;
+      ? IF_Tech|IF_Attr|IF_Rpl|IF_Display|IF_Usage
+      : IF_Tech|IF_Attr|IF_Rpl|IF_Display|IF_Usage|IF_Child;
   } else
     filter &= IF_Phys|IF_Tech|IF_Display|IF_Usage|IF_Child;
   return filter & ~IF_Rpl;
@@ -287,7 +287,6 @@ void PlaylistManager::InitContextMenu()
       return;
     HwndMenu = RecMenu;
 
-    mn_enable_item(HwndMenu, IDM_PL_NAVIGATE, !((Record*)Source[0])->Data()->Recursive && IsUnderCurrentRoot(Source[0]));
     mn_enable_item(HwndMenu, IDM_PL_DETAILED, rt & (RT_Enum|RT_List));
     mn_enable_item(HwndMenu, IDM_PL_TREEVIEW, rt & (RT_Enum|RT_List));
     mn_enable_item(HwndMenu, IDM_PL_EDIT,     rt == RT_Meta);
@@ -332,7 +331,7 @@ void PlaylistManager::SetInfo(const xstring& text)
   Info = text; // Keep text alive
 }
 
-PlaylistBase::ICP PlaylistManager::GetPlaylistType(const RecordBase* rec) const
+PlaylistBase::ICP PlaylistManager::GetPlaylistState(const RecordBase* rec) const
 { DEBUGLOG(("PlaylistManager::GetPlaylistType(%s)\n", Record::DebugName(rec).cdata()));
   PlaylistBase::ICP ret;
   Playable& pp = rec->Data->Content->GetPlayable();
@@ -458,7 +457,7 @@ void PlaylistManager::UpdateRecord(RecordBase* rec)
       if (rec != NULL)
         flags |= IF_Usage;
     }
-    if (rec && (flags & (IF_Tech|IF_Child|IF_Usage)))
+    if (rec && (flags & (IF_Tech|IF_Attr|IF_Child|IF_Usage)))
     { HPOINTER icon = CalcIcon(rec);
       // update icon?
       if (rec->hptrIcon != icon)

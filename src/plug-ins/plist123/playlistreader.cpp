@@ -329,6 +329,17 @@ bool LSTReader::ParseLine(char* line)
     } else if (memcmp(line+1, "GAIN ", 5) == 0) // gain
     { sscanf(line+6, "%f", &Item.gain);
       Override |= INFO_ITEM;
+    } else if (memcmp(line+1, "AT ", 3) == 0) // at
+    { Attr.at = line+6;
+      Override |= INFO_ATTR;
+    } else if (memcmp(line+1, "OPTIONS ", 8) == 0) // playlist options
+    { if (strstr(line+9, "alt"))
+        Attr.ploptions |= PLO_ALTERNATION;
+      if (strstr(line+9, "noshuffle"))
+        Attr.ploptions |= PLO_NO_SHUFFLE;
+      else if (strstr(line+9, "shuffle"))
+        Attr.ploptions |= PLO_SHUFFLE;
+      Override |= INFO_ATTR;
     } else if (line[1] == ' ')
     { const char* cp = strstr(line+2, ", ");
       if (cp)
@@ -385,7 +396,7 @@ bool LSTReader::ParseLine(char* line)
       }*/
       ParseInt(Tech.samplerate, tokens[1]);
       ParseInt(Tech.channels, tokens[2]);
-      if (strchr(tokens[2], '.'))
+      if (tokens[2] && strchr(tokens[2], '.'))
       { switch (Tech.channels) // convert stupid modes of old PM123 versions
         {case 0:
           Tech.channels = 2;
@@ -426,6 +437,8 @@ PLSReader* PLSReader::Sniffer(const char* url, XFILE* source)
   cp += strspn(buffer, " \t\r\n");
   if (strnicmp(cp, "[playlist]", 10) != 0)
     return NULL;
+  // rewind after header
+  xio_fseek(source, cp + 10 - buffer, XIO_SEEK_SET);
   return new PLSReader(url, source);
 }
 

@@ -32,11 +32,7 @@
 #define INCL_WIN
 #include <debuglog.h>
 
-#ifdef PM123_CORE
 #include <cpp/xstring.h>
-#else
-#include <plugin.h>
-#endif
 
 #include <os2.h>
 
@@ -378,6 +374,16 @@ class PresentationSpace
  public:
                 PresentationSpace(HWND hwnd): Hps(WinGetPS(hwnd)) { PMASSERT(Hps != NULLHANDLE); }
                 ~PresentationSpace()        { PMRASSERT(WinReleasePS(Hps)); }
+                operator HPS() const        { return Hps; }
+};
+
+class PaintPresentationSpace
+{private:
+  const HPS     Hps;
+
+ public:
+                PaintPresentationSpace(HWND hwnd): Hps(WinBeginPaint(hwnd, NULLHANDLE, NULL)) { PMASSERT(Hps != NULLHANDLE); }
+                ~PaintPresentationSpace()   { PMRASSERT(WinReleasePS(Hps)); }
                 operator HPS() const        { return Hps; }
 };
 
