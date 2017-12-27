@@ -1,6 +1,5 @@
 /*
- * Copyright 1997-2003 Samuel Audet <guardia@step.polymtl.ca>
- *                     Taneli Lepp� <rosmo@sektori.com>
+ * Copyright 2013-2014 Marcel Mueller
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -30,69 +29,135 @@
 #ifndef DRC123_H
 #define DRC123_H
 
-#define DLG_FRONTEND 101
-#define DLG_DECONV  102
-#define DLG_GENERATE 103
-#define DLG_MEASURE 104
-#define DLG_CALIBRATE 105
+#define DLG_FRONTEND    20000
+#define DLG_CONFIG      20001
+#define DLG_DECONV      20002
+#define DLG_DECONV_X    20003
+#define DLG_GENERATE    20004
+#define DLG_GENERATE_X  20005
+#define DLG_MEASURE     20006
+#define DLG_MEASURE_X   20007
+#define DLG_CALIBRATE   20008
+#define DLG_CALIBRATE_X 20009
 
-#define ST_GENERIC  1000
-#define GB_GENERIC  1001
-#define ST_DESCR    1002
-#define ML_DESCR    1003
-#define PB_HELP     1010
-#define PB_START    1011
-#define PB_STOP     1012
-#define PB_LOAD     1013
-#define PB_SAVE     1014
-#define PB_APPLY    1015
-#define PB_UNDO     1016
-#define PB_DEFAULT  1017
-#define PB_RELOAD   1018
-#define CC_RESULT   1020
-#define CC_RESULT2  1021
+// Generic definitions
+#define ST_GENERIC      1000
+#define GB_GENERIC      1001
+#define ST_DESCR        1002
+#define ML_DESCR        1003
+#define EF_FILE         1004
 
-#define NB_FRONTEND 1090
+#define PB_HELP         1010
+#define PB_START        1011
+#define PB_STOP         1012
+#define PB_LOAD         1013
+#define PB_CLEAR        1014
+#define PB_SAVE         1015
+#define PB_APPLY        1016
+#define PB_UNDO         1017
+#define PB_DEFAULT      1018
+#define PB_RELOAD       1019
 
-#define EF_WORKDIR  1100
-#define PB_BROWSE   1101
-#define EF_RECURI   1103
-#define CB_ENABLE   1120
-#define LB_KERNEL   1122
-#define CB_FIRORDER 1125
-#define RB_WIN_NONE 1130
-#define RB_WIN_DIMMED_HAMMING 1131
-#define RB_WIN_HAMMING 1132
+#define CC_RESULT       1020
+#define CC_RESULT2      1021
+#define ST_SUBRESULT    1022
+#define CB_FIRORDER     1030
+#define CB_FFTSIZE      1031
+#define EF_FREQ_BIN     1040
+#define EF_FREQ_FACTOR  1041
+#define CB_NOPHASE      1050
 
-#define RB_NOISE    1200
-#define RB_SWEEP    1201
-#define RB_WHITE_N  1205
-#define RB_INTERMED 1206
-#define RB_PINK_N   1207
-#define RB_CH_BOTH  1210
-#define RB_CH_LEFT  1211
-#define RB_CH_RIGHT 1212
-#define CB_DIFF     1215
+#define RB_VIEWTARGET   1050
+#define RB_VIEWGAIN     1051
+#define RB_VIEWDELAY    1052
+#define RB_VIEWTIME     1053
 
-#define CB_USE_CAL  1220
-#define PB_CAL_SELECT 1221
-#define ST_CAL_DESC 1222
-#define CB_DYN_CAL  1223
+#define NB_FRONTEND     1090
 
-#define BX_LEFT     1230
-#define BX_RIGHT    1231
-#define PB_TEST     1234
-#define BX_TEST     1235
-#define SB_GAIN     1238
+// Configuration
+#define EF_WORKDIR      1100
+#define PB_BROWSE       1101
+#define EF_RECURI       1103
+#define PB_CURRENT      1104
 
-#define RB_DEF_LOOP 1300
-#define RB_MONO_LOOP 1301
-#define RB_LEFT_LOOP 1302
-#define RB_RIGHT_LOOP 1303
+// Deconvolution
+#define CB_ENABLE       1160
+#define LB_KERNEL       1162
+#define CB_WIN_HAMMING  1165
+#define CB_SUBSONIC     1170
+#define CB_SUPERSONIC   1171
+
+#define EF_TIME_LOW     1180
+#define EF_TIME_HIGH    1181
+#define CB_TIME_AUTO    1182
+#define EF_KERNEL_LOW   1185
+#define EF_KERNEL_HIGH  1186
+
+// Generate
+#define ST_RUNNING      1201
+#define GB_RESULT       1205
+#define GB_RESULT2      1206
+
+#define EF_LIMITGAIN    1250
+#define EF_GAINSMOOTH   1251
+#define CB_INVERTGAIN   1252
+#define EF_LIMITDELAY   1260
+#define EF_DELAYSMOOTH  1261
+#define EF_NORM_LOW     1270
+#define EF_NORM_HIGH    1271
+#define RB_ENERGY       1275
+#define RB_LOGARITHM    1276
+
+// Open loop
+#define BX_LEFT         1300
+#define BX_RIGHT        1301
+#define PB_TEST         1304
+#define BX_TEST         1305
+#define SB_VOLUME       1308
+#define RB_STEREO       1310
+#define RB_LEFT         1311
+#define RB_RIGHT        1312
+#define RB_DIFF         1313
+
+// Open loop extended settings
+#define EF_FREQ_LOW     1350
+#define EF_FREQ_HIGH    1351
+#define EF_GAIN_LOW     1352
+#define EF_GAIN_HIGH    1353
+#define EF_DELAY_LOW    1354
+#define EF_DELAY_HIGH   1355
+#define EF_GAIN2_LOW    1356
+#define EF_GAIN2_HIGH   1357
+#define EF_VU_LOW       1358
+#define EF_VU_YELLOW    1359
+#define EF_VU_RED       1360
+
+#define EF_DISCARD      1370
+#define EF_REFEXPONENT  1371
+#define EF_REFFDIST     1372
+#define SB_NOTCHORDER   1373
+#define SB_NOTCHFREQ    1374
+
+#define RB_WHITE_N      1380
+#define RB_PINK_N       1381
+#define CB_SKIPEVEN     1385
+#define CB_SKIPRAND     1386
+
+// Measure
+#define RB_NOISE        1400
+#define RB_SWEEP        1401
+#define CB_DIFFOUT      1415
+#define CB_VERIFYMODE   1416
+#define CB_REFIN        1420
+
+#define CB_CAL_FILE     1430
+#define ST_CAL_DESC     1431
+#define CB_MIC_FILE     1432
+#define ST_MIC_DESC     1433
+
+// Calibrate
 
 
 void save_config();
 
-
-#endif /* _REALEQ_H */
-
+#endif

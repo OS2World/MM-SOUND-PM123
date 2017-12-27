@@ -30,7 +30,7 @@
 #include "../core/infobundle.h"
 #include "../eventhandler.h"
 #include "proxyhelper.h"
-#include <cpp/cppvdelegate.h>
+#include <vdelegate.h>
 
 #include <debuglog.h>
 
@@ -70,34 +70,40 @@ bool Filter::UninitPlugin()
   return true;
 }
 
-bool Filter::Initialize(FILTER_PARAMS2* params)
-{ DEBUGLOG(("Filter(%p{%s})::Initialize(%p)\n", this, ModRef->Key.cdata(), params));
+bool Filter::Initialize(FILTER_PARAMS2& params)
+{ DEBUGLOG(("Filter(%p{%s})::Initialize(&%p)\n", this, ModRef->Key.cdata(), &params));
 
-  FILTER_PARAMS2 par = *params;
-  if (IsInitialized() || (*filter_init)(&F, params) != 0)
+  Params = params;
+  if (IsInitialized() || (*filter_init)(&F, &params) != 0)
     return false;
 
   if (F == NULL)
   { // plug-in does not require local structures
     // => pass the pointer of the next stage and skip virtualization of untouched function
-    F = par.a;
+    F = Params.a;
   } else
   { // virtualize untouched functions
-    if (par.output_command          == params->output_command)
-      params->output_command         = vreplace1(&VRStubs[0], par.output_command, par.a);
-    if (par.output_playing_samples  == params->output_playing_samples)
-      params->output_playing_samples = vreplace1(&VRStubs[1], par.output_playing_samples, par.a);
-    if (par.output_request_buffer   == params->output_request_buffer)
-      params->output_request_buffer  = vreplace1(&VRStubs[2], par.output_request_buffer, par.a);
-    if (par.output_commit_buffer    == params->output_commit_buffer)
-      params->output_commit_buffer   = vreplace1(&VRStubs[3], par.output_commit_buffer, par.a);
-    if (par.output_playing_pos      == params->output_playing_pos)
-      params->output_playing_pos     = vreplace1(&VRStubs[4], par.output_playing_pos, par.a);
-    if (par.output_playing_data     == params->output_playing_data)
-      params->output_playing_data    = vreplace1(&VRStubs[5], par.output_playing_data, par.a);
+    if (Params.output_command          == params.output_command)
+      params.output_command         = VRStubs[0].assign(Params.output_command, Params.a);
+    if (Params.output_playing_samples  == params.output_playing_samples)
+      params.output_playing_samples = VRStubs[1].assign(Params.output_playing_samples, Params.a);
+    if (Params.output_request_buffer   == params.output_request_buffer)
+      params.output_request_buffer  = VRStubs[2].assign(Params.output_request_buffer, Params.a);
+    if (Params.output_commit_buffer    == params.output_commit_buffer)
+      params.output_commit_buffer   = VRStubs[3].assign(Params.output_commit_buffer, Params.a);
+    if (Params.output_playing_pos      == params.output_playing_pos)
+      params.output_playing_pos     = VRStubs[4].assign(Params.output_playing_pos, Params.a);
+    if (Params.output_playing_data     == params.output_playing_data)
+      params.output_playing_data    = VRStubs[5].assign(Params.output_playing_data, Params.a);
   }
   RaisePluginChange(PluginEventArgs::Init);
   return true;
+}
+
+void Filter::UpdateEvent(const FILTER_PARAMS2& params)
+{ Params.w = params.w;
+  Params.output_event = params.output_event;
+  (*filter_update)(F, &Params);
 }
 
 
@@ -146,12 +152,12 @@ void FilterProxy1::LoadPlugin()
   mod.LoadMandatoryFunction(&vfilter_uninit,       "filter_uninit");
   mod.LoadMandatoryFunction(&vfilter_play_samples, "filter_play_samples");
 
-  filter_init   = vdelegate(&vd_filter_init,   &proxy_1_filter_init,   this);
+  filter_init   = vd_filter_init.assign(&proxy_1_filter_init,   this);
   filter_update = (void DLLENTRYPF()(struct FILTER_STRUCT*, const FILTER_PARAMS2*)) // type of parameter is replaced too
-                  vreplace1(&vr_filter_update, &proxy_1_filter_update, this);
+                  vr_filter_update.assign(&proxy_1_filter_update, this);
   // filter_uninit is initialized at the filter_init call to a non-no-op function
   // However, the returned pointer will stay the same.
-  filter_uninit = vreplace1(&vr_filter_uninit, &proxy_1_filter_uninit, (struct FILTER_STRUCT*)NULL);
+  filter_uninit = vr_filter_uninit.assign(&proxy_1_filter_uninit, (struct FILTER_STRUCT*)NULL);
 }
 
 inline void FilterProxy1::SendSamples()
@@ -190,7 +196,7 @@ proxy_1_filter_init(FilterProxy1* pp, struct FILTER_STRUCT** f, FILTER_PARAMS2* 
   pp->vformat.bits          = 16;
   pp->vformat.format        = WAVE_FORMAT_PCM;
   // replace the unload function
-  vreplace1(&pp->vr_filter_uninit, pp->vfilter_uninit, pp->vf);
+  pp->vr_filter_uninit.assign(pp->vfilter_uninit, pp->vf);
   // now return some values
   *f = (struct FILTER_STRUCT*)pp;
   params->output_request_buffer = (int  DLLENTRYPF()(struct FILTER_STRUCT*, const FORMAT_INFO2*, float**))

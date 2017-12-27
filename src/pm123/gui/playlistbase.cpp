@@ -328,6 +328,8 @@ MRESULT PlaylistBase::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
       SetEmphasis(CRA_SOURCE, false);
       if (MenuWorker)
         MenuWorker->DetachMenu(IDM_PL_CONTENT);
+      // remove owner to avoid the menu window to be destroyed with the playlist window.
+      WinSetOwner(HwndMenu, NULLHANDLE);
       HwndMenu = NULLHANDLE;
     }
     break;
@@ -545,7 +547,6 @@ MRESULT PlaylistBase::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
         break;
 
        case IDM_PL_PROPERTIES:
-        if (Source.size() == 1)
         { AInfoDialog::KeyType set;
           PopulateSetFromSource(set);
           UserOpenInfoView(set, AInfoDialog::Page_ItemInfo);
@@ -1397,7 +1398,7 @@ int PlaylistBase::CompSize(const PlayableInstance* l, const PlayableInstance* r)
 }
 
 int PlaylistBase::CompTime(const PlayableInstance* l, const PlayableInstance* r)
-{ return l->GetInfo().obj->songlength > r->GetInfo().obj->songlength;
+{ return l->GetInfo().drpl->totallength > r->GetInfo().drpl->totallength;
 }
 
 /* Drag and drop - Target side *********************************************/
@@ -1753,9 +1754,9 @@ BOOL PlaylistBase::DropRender(DragTransfer pdtrans)
 void PlaylistBase::DropRenderAsync(DragTransfer pdtrans, Playable* pp_)
 { int_ptr<Playable> pp;
   pp.fromCptr(pp_);
-  bool ok = pp->Save(pp->URL, "plist123.dll", NULL, false);
+  int rc = pp->Save(pp->URL, "plist123.dll", NULL, false);
   // Acknowledge the target.
-  pdtrans.RenderComplete(ok ? DMFL_RENDEROK : DMFL_RENDERFAIL);
+  pdtrans.RenderComplete(rc == 0 ? DMFL_RENDEROK : DMFL_RENDERFAIL);
 }
 
 void PlaylistBase::DropEnd(vector<RecordBase>* source, bool ok)

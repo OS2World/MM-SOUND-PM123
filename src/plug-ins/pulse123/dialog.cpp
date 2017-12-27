@@ -77,7 +77,8 @@ MRESULT IntrospectBase::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
       do_warpsans(GetHwnd());
       // Populate MRU list
       ComboBox cb(GetCtrl(CB_SERVER));
-      cb.InsertItem(Configuration.SinkServer);
+      if (Configuration.SinkServer)
+        cb.InsertItem(Configuration.SinkServer);
       char key[] = "Server1";
       do
       { xstring url;
@@ -98,7 +99,6 @@ MRESULT IntrospectBase::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
      case DID_OK:
       { ComboBox cb(GetCtrl(CB_SERVER));
         const xstring& server = cb.Text();
-        Configuration.SinkKeepAlive = WinQueryButtonCheckstate(GetHwnd(), CB_PBKEEP);
         // update MRU list
         if (server.length())
         { char key[] = "Server1";
@@ -215,7 +215,6 @@ MRESULT ConfigDialog::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
   switch (msg)
   {case WM_INITDLG:
     { MRESULT ret = IntrospectBase::DlgProc(msg, mp1, mp2);
-      WinCheckButton(GetHwnd(), CB_PBKEEP, Configuration.SinkKeepAlive);
       if (Configuration.Sink)
         PMRASSERT(WinSetDlgItemText(GetHwnd(), CB_SINKSRC, Configuration.Sink));
       if (Configuration.SinkPort)
@@ -239,7 +238,6 @@ MRESULT ConfigDialog::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
     switch (SHORT1FROMMP(mp1))
     {case DID_OK:
       { Configuration.SinkServer = WinQueryDlgItemXText(GetHwnd(), CB_SERVER);
-        Configuration.SinkKeepAlive = WinQueryButtonCheckstate(GetHwnd(), CB_PBKEEP);
         const xstring& sink = WinQueryDlgItemXText(GetHwnd(), CB_SINKSRC);
         Configuration.Sink = sink.length() && !sink.startsWithI("default") ? sink : xstring();
         const xstring& port = WinQueryDlgItemXText(GetHwnd(), CB_PORT);
@@ -347,11 +345,11 @@ LoadWizard::LoadWizard(HMODULE module, HWND owner, const xstring& title)
   StartDialog(owner, HWND_DESKTOP);
 }
 
-static const char* SamplingRates[] =
+static const char* const SamplingRates[] =
 { "8000", "11025", "12000", "16000", "22050", "24000", "32000", "44100", "48000", "96000" };
 
-static int SamplingRateCmp(int* key, const char* elem)
-{ return *key - atoi(elem);
+static int SamplingRateCmp(const int& key, const char& elem)
+{ return key - atoi(&elem);
 }
 
 MRESULT LoadWizard::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -372,7 +370,7 @@ MRESULT LoadWizard::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
       { SpinButton sb(GetCtrl(SB_RATE));
         sb.SetArray(SamplingRates, sizeof SamplingRates/sizeof *SamplingRates);
         size_t pos;
-        if ( !binary_search(&Configuration.SourceRate, pos, SamplingRates, sizeof SamplingRates/sizeof *SamplingRates, &SamplingRateCmp)
+        if ( !binary_search<const char,const int>(Configuration.SourceRate, pos, &SamplingRates[0], sizeof SamplingRates/sizeof *SamplingRates, &SamplingRateCmp)
           && ( pos == sizeof SamplingRates/sizeof *SamplingRates
             || (pos && 2*Configuration.SourceRate < atoi(SamplingRates[pos]) + atoi(SamplingRates[pos-1])) ))
           --pos;

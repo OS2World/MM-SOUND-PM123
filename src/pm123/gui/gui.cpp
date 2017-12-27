@@ -64,6 +64,7 @@
 #include <sys/stat.h>
 #include <math.h>
 #include <stdio.h>
+#include <errno.h>
 
 
 #if defined(DEBUG_MEM) && defined(DEBUG_LOG)
@@ -190,7 +191,7 @@ class GUIImp : private GUI, private DialogBase
 
   //static Playable& EnsurePlaylist(Playable& list);
 
-  static void      SaveStream(HWND hwnd, BOOL enable);
+  static void      SaveStream(BOOL enable);
   friend BOOL EXPENTRY GUI_HelpHook(HAB hab, ULONG usMode, ULONG idTopic, ULONG idSubTopic, PRECTL prcPosition);
 
   static void      LoadAccel();           ///< (Re-)Loads the accelerator table and modifies it by the plug-ins.
@@ -342,7 +343,7 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
        case DLT_PLAYLISTTREE:
         return MRFROMLONG(ShowHidePlaylist(action ? PlaylistManager::GetByKey(pp->GetPlayable()) : PlaylistManager::FindByKey(pp->GetPlayable()), action));
       }
-      return false;
+      return MRFROMLONG(false);
     }
 
    case WMP_EDIT_META:
@@ -366,7 +367,7 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
           amp_messagef(HFrame, MSG_ERROR, "Cannot edit tag of file:\n%s", pp->URL.cdata());
           break;
         case 0:   // tag changed
-          pp->RequestInfo(IF_Meta, PRI_Normal);
+          pp->Invalidate(IF_Meta);
           // Refresh will come automatically
         case 300: // tag unchanged
           break;
@@ -584,7 +585,7 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
         ForceLocationMsg();
     }
     return 0;
-    
+
    case WMP_PLAYABLE_EVENT:
     { APlayable* root = CurrentIter->GetRoot();
       DEBUGLOG(("GUIImp::DlgProc: WMP_PLAYABLE_EVENT %p %x/%x - %p\n", mp1, SHORT1FROMMP(mp2), SHORT2FROMMP(mp2), root));
@@ -640,7 +641,7 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
         ForceLocationMsg();
     }
     return 0;
-    
+
    case WMP_REFRESH_ACCEL:
     { // eat other identical messages
       QMSG qmsg;
@@ -856,9 +857,8 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
           break;
         }
        case IDM_M_SAVE:
-          // TODO: Save stream
-          //amp_save_stream(HPlayer, !Ctrl::GetSavename());
-          break;
+        SaveStream(!Ctrl::GetSavename());
+        break;
 
        case IDM_M_PLAYLIST:
         PlaylistView::GetByKey(*DefaultPL)->SetVisible(true);
@@ -896,7 +896,9 @@ MRESULT GUIImp::GUIDlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
        case IDM_M_NORMAL:
        case IDM_M_SMALL:
        case IDM_M_TINY:
-        Cfg::ChangeAccess().mode = (cfg_mode)(cmd - IDM_M_NORMAL);
+        { Cfg::ChangeAccess cfg;
+          cfg.mode = (cfg_mode)(cmd - IDM_M_NORMAL);
+        }
         break;
 
        case IDM_M_MINIMIZE:
@@ -1347,12 +1349,14 @@ void GUIImp::ConfigNotification(const void*, const CfgChangeArgs& args)
 }
 
 
-void GUIImp::SaveStream(HWND hwnd, BOOL enable)
-{
+void GUIImp::SaveStream(BOOL enable)
+{ DEBUGLOG(("GUIImp::SaveStream(%u)\n", enable));
   if( enable )
   { FILEDLG filedialog = { sizeof(FILEDLG) };
-    filedialog.fl         = FDS_CENTER | FDS_SAVEAS_DIALOG | FDS_ENABLEFILELB;
-    filedialog.pszTitle   = "Save stream as";
+    filedialog.fl        = FDS_CENTER|FDS_SAVEAS_DIALOG|FDS_ENABLEFILELB;
+    filedialog.pszTitle  = "Save stream as";
+    char type[_MAX_PATH] = "";
+    filedialog.pszIType  = type;
 
     xstring savedir = Cfg::Get().savedir;
     if (savedir.length() > 8)
@@ -1360,10 +1364,13 @@ void GUIImp::SaveStream(HWND hwnd, BOOL enable)
       strlcpy(filedialog.szFullFile, surl2file(savedir), sizeof filedialog.szFullFile);
     else
       filedialog.szFullFile[0] = 0;
-    amp_file_dlg(HWND_DESKTOP, hwnd, &filedialog);
+    amp_file_dlg(HWND_DESKTOP, HPlayer, &filedialog);
 
     if (filedialog.lReturn == DID_OK)
-    { if (amp_warn_if_overwrite( hwnd, filedialog.szFullFile ))
+    {
+      struct stat fi;
+      if ( stat(filedialog.szFullFile, &fi) != 0
+        || amp_query(HPlayer, "File %s already exists. Append it?", filedialog.szFullFile) )
       { url123 url = url123::normalizeURL(filedialog.szFullFile);
         PostCtrlCommand(Ctrl::MkSave(url));
         Cfg::ChangeAccess().savedir = url.getBasePath();
@@ -1592,7 +1599,7 @@ bool GUIImp::ShowHidePlaylist(PlaylistBase* plp, DialogAction action)
 
 
 void GUIImp::RefreshTimers(HPS hps, int rem_song, PM123_TIME rem_time)
-{ DEBUGLOG(("GUI::RefreshTimers(%p, %i, %f) - %i\n", hps, rem_song, rem_time, Cfg::Get().mode));
+{ DEBUGLOG(("GUIImp::RefreshTimers(%p, %i, %g) - %i\n", hps, rem_song, rem_time, Cfg::Get().mode));
 
   APlayable* root = CurrentIter->GetRoot();
   if (!root)
@@ -1706,7 +1713,7 @@ void GUIImp::PrepareText()
       text = xstring(text, 0, cfg.restrict_length) + "...";
     break;
   }
-  bmp_set_text(!text ? "" : text);
+  bmp_set_text(!text ? "" : text.cdata());
 }
 
 void GUIImp::Paint(HPS hps, UpdateFlags mask)
@@ -1736,11 +1743,12 @@ void GUIImp::Paint(HPS hps, UpdateFlags mask)
     if (mask & UPD_TIMERS)
       RefreshTimers(hps, back_index, back_offset);
     if (mask & UPD_PLINDEX)
-      if (root && (root->GetInfo().tech->attributes & (TATTR_SONG|TATTR_PLAYLIST)) == TATTR_PLAYLIST)
+    { if (root && (root->GetInfo().tech->attributes & (TATTR_SONG|TATTR_PLAYLIST)) == TATTR_PLAYLIST)
       { int total = root->GetInfo().rpl->songs;
         bmp_draw_plind(hps, front_index + 1, total);
       } else
         bmp_draw_plind(hps, -1, -1);
+    }
   }
   if (mask & UPD_PLMODE)
     bmp_draw_plmode(hps, root != NULL, root && root->IsPlaylist());
@@ -1977,7 +1985,11 @@ void GUIImp::DropRenderComplete(PDRAGTRANSFER pdtrans_, USHORT flags)
 
 BOOL EXPENTRY GUI_HelpHook(HAB hab, ULONG usMode, ULONG idTopic, ULONG idSubTopic, PRECTL prcPosition)
 { DEBUGLOG(("HelpHook(%p, %x, %x, %x, {%li,%li, %li,%li})\n", hab,
-    usMode, idTopic, idSubTopic, prcPosition->xLeft, prcPosition->yBottom, prcPosition->xRight, prcPosition->yTop));
+    (SHORT)usMode, idTopic, idSubTopic, prcPosition->xLeft, prcPosition->yBottom, prcPosition->xRight, prcPosition->yTop));
+  switch ((SHORT)usMode)
+  {case HLPM_WINDOW:
+    return GUI::ShowHelp((SHORT)idTopic);
+  }
   return FALSE;
 }
 
@@ -2033,7 +2045,7 @@ void GUIImp::Init()
   // Init help manager
   xstring infname(amp_startpath + "pm123.inf");
   struct stat fi;
-  if( stat( infname, &fi ) != 0  )
+  if( stat( infname, &fi ) != 0 )
     // If the file of the help does not placed together with the program,
     // we shall give to the help manager to find it.
     infname = "pm123.inf";
@@ -2071,6 +2083,7 @@ void GUIImp::Init()
 void GUIImp::Uninit()
 { DEBUGLOG(("GUIImp::Uninit()\n"));
 
+  InfoDialog::DestroyAll();
   PlaylistManager::DestroyAll();
   PlaylistView::DestroyAll();
   InspectorDialog::UnInit();
@@ -2255,4 +2268,3 @@ void GUI::Init()
 void GUI::Uninit()
 { GUIImp::Uninit();
 }
-

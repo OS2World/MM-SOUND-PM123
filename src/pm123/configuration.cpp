@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2012 Marcel Mueller
+ * Copyright 2007-2013 Marcel Mueller
  * Copyright 2004      Dmitry A.Steklenev <glass@ptv.ru>
  * Copyright 1997-2003 Samuel Audet  <guardia@step.polymtl.ca>
  *                     Taneli Lepp�  <rosmo@sektori.com>
@@ -124,6 +124,7 @@ const amp_cfg Cfg::Default =
   "os2rec.dll?enabled=true\n"
   "pulse123.dll?enabled=true\n"
 , "realeq.dll?enabled=true\n"
+  "drc123.dll?enabled=true\n"
 , "os2audio.dll?enabled=true\n"
   "wavout.dll?enabled=false\n"
   "pulse123.dll?enabled=false\n"
@@ -492,11 +493,48 @@ bool Cfg::RestWindowPos(HWND hwnd, const char* extkey)
     return false;
 
   BOOL rc = WinRestoreWindowPos("PM123", key1st, hwnd);
-  PrfWriteProfileData( HINI_PROFILE, "PM123", key1st, NULL, 0);
+  PrfWriteProfileData(HINI_PROFILE, "PM123", key1st, NULL, 0);
 
   return rc;
 }
 
+bool Cfg::ResetPlugins(const char* key)
+{ ULONG size;
+  if (!PrfQueryProfileSize(HIni, "Settings", key, &size) || !size)
+    return false;
+  PrfQueryProfileData(HIni, "Settings", key, NULL, 0);
+  return true;
+}
+
+void Cfg::MigrateIni()
+{
+  char version[20];
+  ULONG size = sizeof(version) -1;
+  if (PrfQueryProfileData(HIni, "PM123", "Version", version, &size))
+    version[size] = 0;
+  else
+    version[0] = 0;
+  int cmp = strcmp(version, "1.41");
+  if (cmp == 0)
+    return; // nothing to migrate
+  if (cmp > 0)
+  { EventHandler::PostFormat(MSG_WARNING, "The PM123 configuration file is from a newer version (%s).\n"
+                                          "Continue at your own risk.", version);
+    return;
+  }
+
+  // INI file from earlier version
+  // reset plug-in configuration
+  if ( ResetPlugins("decoders_list")
+     | ResetPlugins("filters_list")
+     | ResetPlugins("outputs_list")
+     | ResetPlugins("visuals_list") )
+    EventHandler::Post(MSG_INFO, "The PM123 configuration file is from a version before 1.41. The plug-in configuration will be reset to defaults.\n"
+                                 "If you had custom plug-ins installed you need to add them manually again. But check whether you still need them.");
+
+  // migration completed
+  PrfWriteProfileData(HIni, "PM123", "Version", "1.41", 4);
+}
 
 void Cfg::MigrateIni(const char* inipath, const char* app)
 {
@@ -557,11 +595,14 @@ bool Cfg::Set(amp_cfg& settings)
 void Cfg::Init()
 {
   // Open profile
-  xstring inipath = amp_basepath + "\\PM123.INI"; // TODO: command line option
+  xstring inipath = amp_basepath + "\\PM123.INI";
   HIni = PrfOpenProfile(amp_player_hab, inipath);
   if (HIni == NULLHANDLE)
-    amp_fail("Failed to access PM123 configuration file %s.", inipath.cdata());
+  { EventHandler::PostFormat(MSG_ERROR, "Failed to access PM123 configuration file %s.", inipath.cdata());
+    exit(1);
+  }
 
+  MigrateIni();
   LoadIni();
 
   MigrateIni(amp_basepath, "analyzer");

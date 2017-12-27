@@ -31,11 +31,90 @@
 
 #include "OpenLoop.h"
 
+class Deconvolution;
+
 class Measure : public OpenLoop
-{
+{public:
+  enum MeasureMode
+  { MD_Noise
+  , MD_Sweep
+  };
+  enum Channels
+  { CH_Both
+  , CH_Left
+  , CH_Right
+  };
+  struct MesParameters
+  { /// Measurement mode
+    MeasureMode Mode;
+    /// Channels to measure
+    Channels    Chan;
+    /// Soundcard calibration file, NULL if none.
+    xstring     CalFile;
+    /// Microphone calibration file, NULL if none.
+    xstring     MicFile;
+    /// Play the reference signal in differential mode,
+    /// i.e. the right output has the inverse signal.
+    bool        DiffOut;
+    /// Use right line in channel as reference signal.
+    bool        RefIn;
+    /// Deconvolution of the reference to verify the result.
+    bool        VerifyMode;
+  };
+
+  enum Column
+  { Frequency
+  , LGain
+  , LDelay
+  , RGain
+  , RDelay
+  , ColCount
+  };
+  /// @brief File with measurement data.
+  class MeasureFile
+  : public OpenLoopFile
+  , public MesParameters
+  {private:
+    virtual bool ParseHeaderField(const char* string);
+    virtual bool WriteHeaderFields(FILE* f);
+   public:
+                MeasureFile();
+    void        reset()                         { OpenLoopFile::reset(ColCount); }
+  };
+
  public:
-  Measure(FILTER_PARAMS2& params);
-  virtual ~Measure();
+  static const SVTable VTable;
+  static const MeasureFile DefData;
+ private:
+  static MeasureFile Data;
+ private:
+  MesParameters MesParams;
+  /// Another temporary, not destroyed by ComputeDelay.
+  FreqDomainData AnaTemp2;
+  FreqDomainData CalibrationL2L;
+  FreqDomainData CalibrationR2R;
+  FreqDomainData CalibrationR2L;
+  FreqDomainData CalibrationL2R;
+
+  sco_ptr<Deconvolution> VerifyFilter;
+
+ protected:
+                Measure(const MeasureFile& params, FILTER_PARAMS2& filterparams);
+ public:
+  static Measure* Factory(FILTER_PARAMS2& filterparams);
+  virtual       ~Measure();
+  virtual void  Update(const FILTER_PARAMS2& params);
+ private:
+  static  void  Inverse2x2(fftwf_complex& m11, fftwf_complex& m12, fftwf_complex& m21, fftwf_complex& m22);
+ protected:
+  virtual void  InitAnalyzer();
+  virtual void  ProcessFFTData(FreqDomainData (&input)[2], double scale);
+ public:
+  static  bool  IsRunning()                     { return CurrentMode == MODE_MEASURE; }
+  static  void  SetVolume(double volume);
+  static  bool  Start();
+  static  void  Clear();
+  static SyncRef<MeasureFile> GetData()         { return Data; }
 };
 
 #endif // MEASURE_H_

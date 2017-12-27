@@ -242,6 +242,9 @@ class Cfg
 
   /// Load configuration from ini file.
   static void LoadIni();
+  static bool ResetPlugins(const char* key);
+  /// Migrate PM123 configuration from earlier version.
+  static void MigrateIni();
   /// migrate plug-in configuration
   static void MigrateIni(const char* inipath, const char* app);
   /// Purge outdated ini locations in the profile

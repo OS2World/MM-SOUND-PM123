@@ -43,8 +43,12 @@ struct ControlBase
 { HWND        Hwnd;
   ControlBase(HWND hwnd)                            : Hwnd(hwnd) {}
   bool        operator!() const                     { return Hwnd == NULLHANDLE; }
+  USHORT      ID() const                            { return WinQueryWindowUShort(Hwnd, QWS_ID); }
   void        Enabled(bool enable)                  { PMRASSERT(WinEnableWindow(Hwnd, enable)); }
+  void        Visible(bool visible)                 { PMRASSERT(WinShowWindow(Hwnd, visible)); }
   ULONG       Style() const                         { return WinQueryWindowULong(Hwnd, QWL_STYLE); }
+  void        Style(ULONG style)                    { PMRASSERT(WinSetWindowULong(Hwnd, QWL_STYLE, style)); }
+  void        Style(ULONG style, ULONG mask)        { PMRASSERT(WinSetWindowBits(Hwnd, QWL_STYLE, style, mask)); }
   void        Text(const char* text)                { PMRASSERT(WinSetWindowText(Hwnd, text)); }
   xstring     Text() const                          { return WinQueryWindowXText(Hwnd); }
 };
@@ -57,10 +61,12 @@ struct CheckBox : ControlBase
 
 struct RadioButton : ControlBase
 { RadioButton(HWND hwnd)                            : ControlBase(hwnd) {}
-  bool        CheckState(bool checked = true)       { return (bool)SHORT1FROMMR(WinSendMsg(Hwnd, BM_SETCHECK, MPFROMSHORT(checked), 0)); }
+  bool        CheckState(bool checked)              { return (bool)SHORT1FROMMR(WinSendMsg(Hwnd, BM_SETCHECK, MPFROMSHORT(checked), 0)); }
   bool        CheckState() const                    { return (bool)SHORT1FROMMR(WinSendMsg(Hwnd, BM_QUERYCHECK, 0, 0)); }
-  int         CheckIndex() const                    { return SHORT1FROMMR(WinSendMsg(Hwnd, BM_QUERYCHECKINDEX, 0, 0)); }
+  int         CheckIndex() const                    { return (SHORT)SHORT1FROMMR(WinSendMsg(Hwnd, BM_QUERYCHECKINDEX, 0, 0)); }
   USHORT      CheckID() const;
+  void        EnableAll(bool enable);
+  void        UncheckAll();
 };
 
 struct ListBox : ControlBase
@@ -73,7 +79,7 @@ struct ListBox : ControlBase
   ULONG       Handle(int i) const                   { return LONGFROMMR(WinSendMsg(Hwnd, LM_QUERYITEMHANDLE, MPFROMSHORT(i), 0)); }
   xstring     ItemText(int i) const;
   void        ItemText(int i, const char* text)     { PMRASSERT(WinSendMsg(Hwnd, LM_SETITEMTEXT, MPFROMSHORT(i), MPFROMP(text))); }
-  int         NextSelection(SHORT after = LIT_FIRST) const { return SHORT1FROMMR(WinSendMsg(Hwnd, LM_QUERYSELECTION, MPFROMSHORT(after), 0)); }
+  int         NextSelection(int after = LIT_FIRST) const { return (SHORT)SHORT1FROMMR(WinSendMsg(Hwnd, LM_QUERYSELECTION, MPFROMSHORT(after), 0)); }
   bool        Select(int i)                         { return (bool)WinSendMsg(Hwnd, LM_SELECTITEM, MPFROMSHORT(i), MPFROMSHORT(TRUE)); }
 };
 
@@ -103,8 +109,8 @@ struct SpinButton : ControlBase
 
 struct Notebook : ControlBase
 { Notebook(HWND hwnd) : ControlBase(hwnd) {}
-  ULONG       GetTopPageID() const                  { return LONGFROMMR(WinSendMsg(Hwnd, BKM_QUERYPAGEID, 0, MPFROM2SHORT(BKA_TOP, 0))); }
-  void        TurnToPage(ULONG id)                  { PMRASSERT(WinSendMsg(Hwnd, BKM_TURNTOPAGE, MPFROMLONG(id), 0)); }
+  ULONG       CurrentPageID() const                 { return LONGFROMMR(WinSendMsg(Hwnd, BKM_QUERYPAGEID, 0, MPFROM2SHORT(BKA_TOP, 0))); }
+  void        CurrentPageID(ULONG id)               { PMRASSERT(WinSendMsg(Hwnd, BKM_TURNTOPAGE, MPFROMLONG(id), 0)); }
 };
 
 #endif

@@ -2,9 +2,9 @@
 #  makefile for the whole pm123 package
 #
 
-VERSION = 1.41a2
-PARTS   = $(PARTS) src\fft123\fft123.dll
+VERSION = 1.41b2
 PARTS   = $(PARTS) src\xio123\xio123.dll
+PARTS   = $(PARTS) src\fft123\fft123.dll
 PARTS   = $(PARTS) src\zlb123\zlb123.dll
 PARTS   = $(PARTS) src\plug-ins\analyzer\analyzer.dll
 PARTS   = $(PARTS) src\plug-ins\cddaplay\cddaplay.dll
@@ -19,9 +19,18 @@ PARTS   = $(PARTS) src\plug-ins\os2rec\os2rec.dll
 PARTS   = $(PARTS) src\plug-ins\pulse123\pulse123.dll
 PARTS   = $(PARTS) src\plug-ins\foldr123\foldr123.dll
 PARTS   = $(PARTS) src\plug-ins\plist123\plist123.dll
+PARTS   = $(PARTS) src\plug-ins\drc123\drc123.dll
 PARTS   = $(PARTS) src\pm123\pm123.exe
 PARTS   = $(PARTS) src\skinutil\skinutil.exe
 PARTS   = $(PARTS) doc\pm123.inf
+PARTS   = $(PARTS) doc\pm123_pdk.inf
+
+LIBPARTS= $(LIBPARTS) src\utils\utilfct$(LBO) src\utils\cpp\cpputil$(LBO)
+LIBPARTS= $(LIBPARTS) src\gbm123\libgbm$(LBO)
+LIBPARTS= $(LIBPARTS) src\snd123\src\sndfile$(LBO) src\libmpg123\src\libmpg123$(LBO)
+LIBPARTS= $(LIBPARTS) src\ogg123\src\libogg$(LBO) src\vrb123\lib\libvorbis$(LBO)
+LIBPARTS= $(LIBPARTS) src\libflac\src\libFLAC\libFLAC$(LBO)
+LIBPARTS= $(LIBPARTS) src\pulseaudio\pulsecore\pulsecore$(LBO) src\pulseaudio\pulse\pulse$(LBO)
 
 TARGET  = $(PARTS)
 
@@ -169,6 +178,11 @@ src\plug-ins\plist123\plist123.dll: src\utils\utilfct$(LBO) src\utils\cpp\cpputi
 	@$(MAKE) $(MFLAGS)
 	@cd ..\..\..
 
+src\plug-ins\drc123\drc123.dll: src\utils\utilfct$(LBO) src\utils\cpp\cpputil_plugin$(LBO)
+	cd src\plug-ins\drc123
+	@$(MAKE) $(MFLAGS)
+	@cd ..\..\..
+
 src\pm123\pm123.exe: src\utils\utilfct$(LBO) src\utils\cpp\cpputil$(LBO) src\xio123\xio123$(LBI) src\gbm123\libgbm$(LBO)
 	cd src\pm123
 	@$(MAKE) $(MFLAGS)
@@ -179,10 +193,13 @@ src\skinutil\skinutil.exe: src\utils\utilfct$(LBO) src\gbm123\libgbm$(LBO)
 	@$(MAKE) $(MFLAGS)
 	@cd ..\..
 
-doc\pm123.inf:
+doc\pm123.inf doc\pm123_pdk.inf: $(MDUMMY)
 	cd doc
 	@$(MAKE) $(MFLAGS)
 	@cd ..
+
+cleanparts: $(MDUMMY)
+	-@del pm123.exe $(PARTS) $(LIBPARTS) 2> nul
 
 clean:  clean123 $(MDUMMY)
 	cd src\gbm123
@@ -274,6 +291,9 @@ clean123: $(MDUMMY)
 	cd src\plug-ins\plist123
 	@$(MAKE) $(MFLAGS) clean
 	@cd ..\..\..
+	cd src\plug-ins\drc123
+	@$(MAKE) $(MFLAGS) clean
+	@cd ..\..\..
 	cd src\pm123
 	@$(MAKE) $(MFLAGS) clean
 	@cd ..\..
@@ -357,6 +377,9 @@ depend: $(MDUMMY)
 	cd src\plug-ins\plist123
 	@$(MAKE) $(MFLAGS) depend
 	@cd ..\..\..
+	cd src\plug-ins\drc123
+	@$(MAKE) $(MFLAGS) depend
+	@cd ..\..\..
 	cd src\pm123
 	@$(MAKE) $(MFLAGS) depend
 	@cd ..\..
@@ -389,6 +412,7 @@ distfiles: filesclean $(PARTS) $(MDUMMY)
 	copy src\plug-ins\pulse123\pulse123.dll dist\files
 	copy src\plug-ins\foldr123\foldr123.dll dist\files
 	copy src\plug-ins\plist123\plist123.dll dist\files
+	copy src\plug-ins\drc123\drc123.dll     dist\files
 	copy src\pm123\pm123.exe        dist\files
 	copy src\pm123\default.skn      dist\files
 	copy src\skinutil\skinutil.exe  dist\files

@@ -316,9 +316,7 @@ ssize_t MPG123::FRead(void* that, void* buffer, size_t size)
 {
   size = xio_fread(buffer, 1, size, this->XFile);
   if (this->XSave && size > 0)
-  { if (this->XSave)
-      xio_fwrite(buffer, 1, size, this->XSave);
-  }
+    xio_fwrite(buffer, 1, size, this->XSave);
   return size;
 }
 
@@ -526,22 +524,27 @@ void MPG123::FillMetaInfo(META_INFO& meta)
 xstring MPG123::ReplaceFile(const char* srcfile, const char* dstfile)
 {
   xstring errmsg;
+  struct inst
+  { MPG123*      W;
+    mpg123_off_t ResumePos;
+  };
 
   // Suspend all active instances of the updated file.
   Mutex::Lock lock(InstMutex);
 
-  // TODO: won't work
-  mpg123_off_t* resumepoints = (mpg123_off_t*)alloca(Instances.size() * sizeof *resumepoints);
-  memset(resumepoints, -1, Instances.size() * sizeof *resumepoints);
+  inst* resumed = (inst*)alloca(Instances.size() * sizeof *resumed);
+  inst* resumede = resumed;
 
-  size_t i;
-  for (i = 0; i < Instances.size(); i++)
+  size_t i = Instances.size();
+  while (i--) // must go backwards because CloseMPEG modifies Instances.
   { MPG123& w = *Instances[i];
     w.DecMutex.Request();
 
     if (w.MPEG && stricmp(w.Filename, dstfile) == 0)
     { DEBUGLOG(("mpg123:Decoder::ReplaceFile: suspend currently used file: %s\n", w.Filename.cdata()));
-      resumepoints[i] = mpg123_tell(w.MPEG);
+      resumede->W = &w;
+      resumede->ResumePos = mpg123_tell(w.MPEG);
+      ++resumede;
       w.CloseMPEG();
       w.Close();
     } else
@@ -562,13 +565,12 @@ xstring MPG123::ReplaceFile(const char* srcfile, const char* dstfile)
   }
 
   // Resume all suspended instances of the updated file.
-  for (i = 0; i < Instances.size(); i++)
-  { if (resumepoints[i] == -1)
-      continue;
-    MPG123& w = *Instances[i];
+  while (resumede != resumed)
+  { --resumede;
+    MPG123& w = *resumede->W;
     DEBUGLOG(("mpg123:Decoder::ReplaceFile: resumes currently used file: %s\n", w.Filename.cdata()));
     if (w.Open("rbXU") == 0 && w.OpenMPEG() == 0)
-      mpg123_seek(w.MPEG, resumepoints[i], SEEK_SET);
+      mpg123_seek(w.MPEG, resumede->ResumePos, SEEK_SET);
     w.DecMutex.Release();
   }
 
@@ -621,6 +623,7 @@ void Decoder::ThreadFunc()
 
  done:
   DecMutex.Release();
+ stop:
   Status = DECODER_STOPPED;
   DecTID = -1;
   return;
@@ -674,7 +677,11 @@ void Decoder::ThreadFunc()
   int count = (*OutRequestBuffer)(OutParam, &format, &buffer);
   DecMutex.Request();
   if ((Status & 3) == 0)
-    goto done;
+  { PM123_TIME pos = (double)(mpg123_tell(MPEG)) / FrameInfo.rate;
+    DecMutex.Release();
+    (*OutCommitBuffer)(OutParam, 0, pos);
+    goto stop;
+  }
   if (count <= 0)
   { // Error
     state = ST_ERROR;
@@ -695,6 +702,7 @@ void Decoder::ThreadFunc()
   NextFast -= done;
   switch (rc)
   {case MPG123_DONE:
+   case MPG123_NEED_MORE: // Incomplete streams may return this. But there is no more data so treat as EOF.
     state = ST_EOF;
     if (done)
     { PM123_TIME pos = (double)(mpg123_tell(MPEG) - done) / FrameInfo.rate;
@@ -722,7 +730,9 @@ void Decoder::ThreadFunc()
     mpg123_frameinfo info;
     if (mpg123_info(MPEG, &info) == MPG123_OK)
       obj.bitrate = info.bitrate;
+    DecMutex.Release();
     (*OutEvent)(OutParam, DECEVENT_CHANGEOBJ, &obj);
+    DecMutex.Request();
   }
   // Update meta info?
   // The flag my be set while executing mpg123_read
@@ -730,7 +740,9 @@ void Decoder::ThreadFunc()
   { UpdateMeta = false;
     META_INFO meta;
     FillMetaInfo(meta);
+    DecMutex.Release();
     (*OutEvent)(OutParam, DECEVENT_CHANGEMETA, &meta);
+    DecMutex.Request();
   }
   goto nextblock;
 }
@@ -764,7 +776,6 @@ PLUGIN_RC Decoder::Play(PM123_TIME start, float skipspeed)
   NextFast = 0;
   SkipSpeed = skipspeed;
   Status = DECODER_STARTING;
-  Terminate = false;
   DecTID = _beginthread(PROXYFUNCREF(Decoder)ThreadStub, 0, 65535, this);
   if (DecTID == -1)
   { Status = DECODER_STOPPED;
@@ -781,7 +792,6 @@ PLUGIN_RC Decoder::Stop()
     return PLUGIN_GO_ALREADY;
 
   Status = DECODER_STOPPING;
-  Terminate = true;
   DecEvent.Set();
 
   return PLUGIN_OK;
@@ -825,15 +835,14 @@ PLUGIN_RC Decoder::Save(const xstring& savename)
   } else
   { // Enable or change savename
     if (XSave)
-    { if ( savename.length() == Savename.length()
-        && memcmp(savename.cdata(), Savename.cdata(), savename.length()) == 0 )
+    { if (savename == Savename)
         return PLUGIN_GO_ALREADY;
       xio_fclose(XSave);
       XSave = NULL;
       Savename.reset();
     }
-    XFILE* save = xio_fopen(savename, "abU");
-    if (save == NULL)
+    XSave = xio_fopen(savename, "abU");
+    if (XSave == NULL)
     { int err = xio_errno();
       LastError.sprintf("Could not open file to save data:\n%s\n%s",
         savename.cdata(), xio_strerror(err));

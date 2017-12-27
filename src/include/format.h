@@ -45,6 +45,8 @@ typedef double PM123_TIME;
 /** Object size in bytes (integral) - not all OS/2 compilers support 64 bit ints. */
 typedef double PM123_SIZE;
 
+/** Reduced technical information used for playback.
+ * @remarks This structure is a slice of struct TECH_INFO. */
 typedef struct
 { int        samplerate;
   int        channels;
@@ -164,7 +166,7 @@ typedef struct
   float      postgap;    /**< Gap after playing this item */
   float      gain;       /**< Additional playback gain in dB */
 } ITEM_INFO;
-#define ITEM_INFO_INIT { (const char*)NULL, (const char*)NULL, (const char*)NULL, -1, -1, -1000 }
+#define ITEM_INFO_INIT { (const char*)NULL, (const char*)NULL, (const char*)NULL, 0, 0, 0 }
 
 /** Information types for \c INFO_BUNDLE */
 typedef enum

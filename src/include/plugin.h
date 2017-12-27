@@ -86,22 +86,23 @@ typedef enum
 
 /** file dialog additional flags for \c ulUser field. */
 enum FD_UserOpts
-{ FDU_NONE       = 0x00,
-  FDU_DIR_ENABLE = 0x01,
-  FDU_DIR_ONLY   = 0x02,
-  FDU_RECURSEBTN = 0x04,
-  FDU_RECURSE_ON = 0x08,
-  FDU_RELATIVBTN = 0x10,
-  FDU_RELATIV_ON = 0x20
+{ FDU_NONE       = 0x00 /**< default flags */
+, FDU_DIR_ENABLE = 0x01 /**< enable directory selection */
+, FDU_FILE_ONLY  = 0x02 /**< hide directory selection */
+, FDU_DIR_ONLY   = 0x03 /**< hide file selection */
+, FDU_RECURSEBTN = 0x04 /**< 'recurse into sub directories' button */
+, FDU_RECURSE_ON = 0x08 /**< 'recurse into sub directories' button selected */
+, FDU_RELATIVBTN = 0x10 /**< 'relative path' button */
+, FDU_RELATIV_ON = 0x20 /**< 'relative path' button selected */
 };
 
 /** return value of plugin_query. */
 typedef struct _PLUGIN_QUERYPARAM
-{ int   type;         /**< PLUGIN_*. values can be ORed */
-  char* author;       /**< Author of the plug-in        */
-  char* desc;         /**< Description of the plug-in   */
-  int   configurable; /**< Is the plug-in configurable  */
-  int   interface;    /**< Interface revision           */
+{ int         type;     /**< PLUGIN_*. values can be ORed */
+  const char* author;   /**< Author of the plug-in        */
+  const char* desc;     /**< Description of the plug-in   */
+  int         configurable;/**< Is the plug-in configurable*/
+  int         interface;/**< Interface revision           */
 } PLUGIN_QUERYPARAM;
 
 /** Common services of the PM123 core for plug-ins. */
@@ -188,6 +189,8 @@ typedef struct
   /** printf into a xstring. Any previous content is discarded first. */
   void     DLLENTRYP(sprintf)  (volatile xstring* dst,  const char* fmt, ...);
   void     DLLENTRYP(vsprintf) (volatile xstring* dst,  const char* fmt, va_list va);
+  /** Deduplicate xstring value im memory. */
+  void     DLLENTRYP(deduplicate)(volatile xstring* dst);
 } XSTRING_API;
 
 typedef struct

@@ -30,12 +30,75 @@
 #define CALIBRATE_H
 
 #include "OpenLoop.h"
+#include "DataFile.h"
+#include "DataVector.h"
+#include <cpp/mutex.h>
+#include <fftw3.h>
+
 
 class Calibrate : public OpenLoop
-{
+{public: // Configuration interface
+  enum MeasureMode
+  { MD_StereoLoop
+  , MD_LeftLoop
+  , MD_RightLoop
+  , MD_BothLoop
+  };
+  struct CalParameters
+  { MeasureMode Mode;
+    // GUI injection
+    double      Gain2Low, Gain2High;    ///< Display range for X talk/IM gain
+  };
+  enum Column
+  { Frequency
+  , LGain
+  , LDelay
+  , RGain
+  , RDelay
+  , DeltaGain
+  , DeltaDelay
+  , R2LGain
+  , R2LDelay
+  , L2RGain
+  , L2RDelay
+  , LIntermod
+  , RIntermod
+  , ColCount
+  };
+  class CalibrationFile
+  : public OpenLoopFile
+  , public CalParameters
+  {private:
+    virtual bool ParseHeaderField(const char* string);
+    virtual bool WriteHeaderFields(FILE* f);
+   public:
+                CalibrationFile();
+    void        reset()                         { DataFile::reset(ColCount); }
+  };
+
  public:
-  Calibrate(FILTER_PARAMS2& params);
-  virtual ~Calibrate();
+  static const SVTable VTable;
+  static const CalibrationFile DefData;
+ private:
+  static CalibrationFile Data;
+ private:
+  CalParameters CalParams;
+
+ private:
+                Calibrate(const CalibrationFile& params, FILTER_PARAMS2& filterparams);
+ public:
+  static Calibrate* Factory(FILTER_PARAMS2& filterparams);
+  virtual       ~Calibrate();
+ protected:
+  virtual ULONG InCommand(ULONG msg, const OUTPUT_PARAMS2* info);
+  virtual void  ProcessFFTData(FreqDomainData (&input)[2], double scale);
+ public:
+  static  bool  IsRunning()                     { return CurrentMode == MODE_CALIBRATE; }
+  static  void  SetVolume(double volume);
+  static  bool  Start();
+  static  void  Clear();
+  static SyncRef<CalibrationFile> GetData()     { return Data; }
 };
+
 
 #endif // CALIBRATE_H

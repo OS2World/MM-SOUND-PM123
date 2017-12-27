@@ -157,7 +157,7 @@ int XIOfile::open(const char* filename, XOFLAGS oflags)
 
   if (oflags & XO_CREATE)
     flags |= OPEN_ACTION_CREATE_IF_NEW;
-  if (flags & XO_TRUNCATE)
+  if (oflags & XO_TRUNCATE)
     flags |= OPEN_ACTION_REPLACE_IF_EXISTS;
   else
     flags |= OPEN_ACTION_OPEN_IF_EXISTS;
@@ -457,7 +457,7 @@ APIRET XIOfile32::doQueryFileInfo(XSTATL* st)
 }
 
 APIRET XIOfile32::doSetFileSize(int64_t size)
-{ if (size > 0x7ffffff | size < 0)
+{ if (size > 0x7ffffff || size < 0)
     return ERROR_INVALID_PARAMETER;
   return DosSetFileSize(s_handle, (long)size);
 }

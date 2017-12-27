@@ -296,4 +296,43 @@ class Event
   bool   IsSet() const;
 };
 
+
+template <class T> class SyncAccess;
+
+struct ASyncAccess
+{ Mutex Mtx;
+};
+
+/// Dummy to simulate synchronization without Mutex
+struct AAsyncAccess
+{ struct
+  { void Request() {}
+    void Release() {}
+  } Mtx;
+};
+
+template <class T>
+class SyncRef
+{ friend class SyncAccess<T>;
+  template <class T2> friend class SyncRef;
+  T* Obj;
+ public:
+  SyncRef() : Obj(NULL) {}
+  SyncRef(T& obj) : Obj(&obj) {}
+  template <class T2>
+  SyncRef(const SyncRef<T2>& r) : Obj(r.Obj) {}
+  SyncRef<T> operator=(T& obj) { Obj = &obj; return *this; }
+};
+
+template <class T>
+class SyncAccess
+{ T& Obj;
+ public:
+  SyncAccess(T& obj)                : Obj(obj) { Obj.Mtx.Request(); }
+  SyncAccess(const SyncRef<T>& obj) : Obj(*obj.Obj) { Obj.Mtx.Request(); }
+  operator T*()                     { return &Obj; }
+  T* operator->()                   { return &Obj; }
+  ~SyncAccess()                     { Obj.Mtx.Release(); }
+};
+
 #endif

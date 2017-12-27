@@ -29,391 +29,288 @@
 #define  INCL_PM
 #define  INCL_BASE
 
-#include "frontend.h"
+#include "Frontend.h"
 #include "Deconvolution.h"
-#include "OpenLoop.h"
 
 #include <stdlib.h>
 #include <error.h>
 #include <string.h>
+#include <math.h>
 
 #include <fileutil.h>
 #include <plugin.h>
+#include <cpp/url123.h>
 #include <cpp/dlgcontrols.h>
+#include <cpp/directory.h>
 #include <cpp/container/stringmap.h>
+#include <cpp/container/stringset.h>
 
 #include <os2.h>
 
 #include <debuglog.h>
 
-#undef  VERSION
-#define VERSION "Digital Room Correction Version 1.0"
-
-
-
-/********** Ini file stuff */
-
-/*static BOOL
-save_eq( HWND hwnd, float* gains, BOOL* mutes, float preamp )
-{
-  FILEDLG filedialog;
-  FILE*   file;
-  int     i = 0;
-
-  memset( &filedialog, 0, sizeof(FILEDLG));
-  filedialog.cbSize   = sizeof(FILEDLG);
-  filedialog.fl       = FDS_CENTER | FDS_SAVEAS_DIALOG;
-  filedialog.pszTitle = "Save Equalizer as...";
-
-  if( lasteq[0] == 0 ) {
-    strcpy( filedialog.szFullFile, "*.REQ" );
-  } else {
-    strcpy( filedialog.szFullFile, lasteq );
-  }
-
-  WinFileDlg( HWND_DESKTOP, HWND_DESKTOP, &filedialog );
-
-  if( filedialog.lReturn == DID_OK )
-  {
-    strcpy( lasteq, filedialog.szFullFile );
-    file = fopen( filedialog.szFullFile, "w" );
-    if( file == NULL ) {
-      return FALSE;
-    }
-
-    fprintf( file, "#\n# Equalizer created with %s\n# Do not modify!\n#\n", VERSION );
-    fprintf( file, "# Band gains\n" );
-    for( i = 0; i < NUM_BANDS*2; i++ ) {
-      fprintf( file, "%g\n", gains[i] );
-    }
-    fprintf(file, "# Mutes\n" );
-    for( i = 0; i < NUM_BANDS*2; i++ ) {
-      fprintf(file, "%u\n", mutes[i]);
-    }
-    fprintf( file, "# Preamplifier\n" );
-    fprintf( file, "%g\n", preamp );
-
-    fprintf( file, "# End of equalizer\n" );
-    fclose ( file );
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-static
-void drivedir( char* buf, char* fullpath )
-{
-  char drive[_MAX_DRIVE],
-       path [_MAX_PATH ];
-
-  _splitpath( fullpath, drive, path, NULL, NULL );
-  strcpy( buf, drive );
-  strcat( buf, path  );
-}
-
-static BOOL
-load_eq( HWND hwnd, float* gains, BOOL* mutes, float* preamp )
-{
-  FILEDLG filedialog;
-
-  memset( &filedialog, 0, sizeof( FILEDLG ));
-  filedialog.cbSize = sizeof(FILEDLG);
-  filedialog.fl = FDS_CENTER | FDS_OPEN_DIALOG;
-  filedialog.pszTitle = "Load Equalizer";
-  drivedir( filedialog.szFullFile, lasteq );
-  strcat( filedialog.szFullFile, "*.REQ" );
-
-  WinFileDlg( HWND_DESKTOP, HWND_DESKTOP, &filedialog );
-
-  if( filedialog.lReturn == DID_OK )
-  {
-    strcpy( lasteq, filedialog.szFullFile );
-    return load_eq_file( filedialog.szFullFile, gains, mutes, preamp );
-  }
-  return FALSE;
-}
-
-static void
-set_slider( HWND hwnd, int channel, int band, double value )
-{ MRESULT rangevalue;
-  DEBUGLOG2(("realeq:set_slider(%p, %d, %d, %f)\n", hwnd, channel, band, value));
-
-  if (value < -12)
-  { DEBUGLOG(("load_dialog: value out of range %d, %d, %f\n", channel, band, value));
-    value = -12;
-  } else if (value > 12)
-  { DEBUGLOG(("load_dialog: value out of range %d, %d, %f\n", channel, band, value));
-    value = 12;
-  }
-
-  rangevalue = WinSendDlgItemMsg( hwnd, 200+NUM_BANDS*channel+band, SLM_QUERYSLIDERINFO,
-                                  MPFROM2SHORT( SMA_SLIDERARMPOSITION, SMA_RANGEVALUE ), 0 );
-
-  WinSendDlgItemMsg( hwnd, 200+NUM_BANDS*channel+band, SLM_SETSLIDERINFO,
-                     MPFROM2SHORT( SMA_SLIDERARMPOSITION, SMA_RANGEVALUE ),
-                     MPFROMSHORT( (value/24.+.5) * (SHORT2FROMMR(rangevalue) - 1) +.5 ));
-}*/
-
 
 xstringconst DefRecURI("record:///0?samp=48000&stereo&in=line&share=yes");
+int_ptr<Frontend> Frontend::Instance;
+
+
+double Frontend::DBGainIterator::ScaleResult(double value) const
+{ return log(value) * (20./M_LN10);
+}
+
+double Frontend::PhaseDelayIterator::ScaleResult(double value) const
+{ return value * LastX * 360.;
+}
+
+void Frontend::SetValue(HWND ctrl, double value, const char* mask)
+{
+  char buffer[32];
+  sprintf(buffer, mask, value);
+  ControlBase(ctrl).Text(buffer);
+}
+
+bool Frontend::GetValue(HWND ctrl, double& value)
+{
+  char buffer[32];
+  LONG len = WinQueryWindowText(ctrl, sizeof buffer, buffer);
+  int n = -1;
+  return sscanf(buffer, "%lf%n", &value, &n) == 1 && n == len;
+}
 
 void Frontend::Init()
 {
   OpenLoop::RecURI = xstring(DefRecURI);
 }
 
-Frontend::Frontend(HWND owner, HMODULE module)
-: NotebookDialogBase(DLG_FRONTEND, module, DF_AutoResize)
+HWND Frontend::Show(HWND owner, HMODULE module)
 {
-  Pages.append() = new DeconvolutionPage(*this);
-  Pages.append() = new GeneratePage(*this);
-  Pages.append() = new MeasurePage(*this);
+  int_ptr<Frontend> instance = Instance;
+  if (!instance)
+    Instance = instance = new Frontend(owner, module);
+  instance->SetVisible(true);
+  return instance->GetHwnd();
+}
+
+Frontend::Frontend(HWND owner, HMODULE module)
+: ManagedDialog<NotebookDialogBase>(DLG_FRONTEND, module, DF_AutoResize)
+{
+  Pages.append() = new ConfigurationPage(*this);
   Pages.append() = new CalibratePage(*this);
+  Pages.append() = new CalibrateExtPage(*this);
+  Pages.append() = new MeasurePage(*this);
+  Pages.append() = new MeasureExtPage(*this);
+  Pages.append() = new GeneratePage(*this);
+  Pages.append() = new GenerateExtPage(*this);
+  Pages.append() = new DeconvolutionPage(*this);
+  Pages.append() = new DeconvolutionExtPage(*this);
   StartDialog(owner, NB_FRONTEND);
 }
 
-static const char* const FIROrders[] =
-{ "16384"
-, "24576"
-, "32768"
-, "49152"
-, "65536"
-, "98304"
-};
+void Frontend::OnDestroy()
+{
+  Instance = NULL;
+  ManagedDialog<NotebookDialogBase>::OnDestroy();
+  save_config();
+}
 
-MRESULT Frontend::DeconvolutionPage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
+
+Frontend::ConfigurationPage::~ConfigurationPage()
+{}
+
+MRESULT Frontend::ConfigurationPage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
 {
   switch (msg)
   {case WM_INITDLG:
-    ComboBox(+GetCtrl(CB_FIRORDER)).InsertItems(FIROrders, countof(FIROrders));
     // Load initial values
-    PostCommand(PB_UNDO);
-    break;
-
-   case WM_DESTROY:
-    Result.Detach();
+    EntryField(+GetCtrl(EF_WORKDIR)).Text(xstring(Filter::WorkDir));
+    EntryField(+GetCtrl(EF_RECURI)).Text(xstring(OpenLoop::RecURI));
     break;
 
    case WM_CONTROL:
     switch (SHORT1FROMMP(mp1))
-    {case EF_WORKDIR:
-      if (SHORT2FROMMP(mp1) == EN_CHANGE)
-        PostCommand(PB_RELOAD);
-      break;
-     case LB_KERNEL:
-      if (SHORT2FROMMP(mp1) == LN_SELECT)
-      { xstringbuilder sb;
-        sb.append(ControlBase(+GetCtrl(EF_WORKDIR)).Text());
-        if (sb.length() && sb[sb.length()-1] != '\\')
-          sb.append('\\');
-        ListBox lb(+GetCtrl(LB_KERNEL));
-        int sel = lb.NextSelection();
-        sb.append(lb.ItemText(sel));
-        Params.FilterFile = sb.get();
-        //DEBUGLOG(("%s\n", Params.FilterFile.cdata()));
-        PostMsg(UM_UPDATEDESCR, 0, 0);
+    {case DLG_CONFIG:
+      if (SHORT2FROMMP(mp1) == BKN_PAGESELECTEDPENDING)
+      { // save values before page change, also save on exit.
+        const xstring& workdir = EntryField(+GetCtrl(EF_WORKDIR)).Text();
+        if (!workdir.length())
+          Filter::WorkDir.reset();
+        else if (url123::isPathDelimiter(workdir[workdir.length()-1]))
+          Filter::WorkDir = workdir;
+        else
+          Filter::WorkDir = workdir + "\\";
+        OpenLoop::RecURI = EntryField(+GetCtrl(EF_RECURI)).Text();
       }
-      break;
     }
     return 0;
 
    case WM_COMMAND:
     switch (SHORT1FROMMP(mp1))
-    {case PB_DEFAULT:
-      Deconvolution::GetDefaultParameters(Params);
-      goto load;
-
-     case PB_UNDO:
-      Deconvolution::GetParameters(Params);
-      if (Params.FilterFile)
-      { char path[_MAX_PATH];
-        sdrivedir(path, Params.FilterFile, sizeof path);
-        EntryField(+GetCtrl(EF_WORKDIR)).Text(path);
-        UpdateDir();
-      }
-     load:
-      { // Load GUI from current configuration
-        CheckBox(+GetCtrl(CB_ENABLE)).Enabled(Params.FilterFile != NULL);
-        EntryField(+GetCtrl(EF_RECURI)).Text(xstring(OpenLoop::RecURI));
-        // Populate list box with filter kernels
-        PostCommand(PB_RELOAD);
-        CheckBox(+GetCtrl(CB_ENABLE)).Enabled(Params.Enabled);
-        RadioButton(+GetCtrl(RB_WIN_NONE + Params.WindowFunction)).CheckState();
-        int selected; // default
-        switch (Params.FIROrder)
-        {case 16384:
-          selected = 0; break;
-         case 24576:
-          selected = 1; break;
-         case 32768:
-          selected = 2; break;
-         default: //case 49152:
-          selected = 3; break;
-         case 65536:
-          selected = 4; break;
-         case 98304:
-          selected = 5; break;
-        }
-        ComboBox(+GetCtrl(CB_FIRORDER)).Select(selected);
-      }
-      break;
-
-     case PB_APPLY:
-      { // Update configuration from GUI
-        OpenLoop::RecURI = EntryField(+GetCtrl(EF_RECURI)).Text();
-        Params.WindowFunction = (Deconvolution::WFN)(RadioButton(+GetCtrl(RB_WIN_NONE)).CheckID() - RB_WIN_NONE);
-        switch (ComboBox(+GetCtrl(CB_FIRORDER)).NextSelection())
-        {case 0: // 16384
-          Params.FIROrder = 16384;
-          Params.PlanSize = 32768;
-          break;
-         case 1: // 24576
-          Params.FIROrder = 24576;
-          Params.PlanSize = 32768;
-          break;
-         case 2: // 32768
-          Params.FIROrder = 32768;
-          Params.PlanSize = 65536;
-          break;
-         case 3: // 49152
-          Params.FIROrder = 49152;
-          Params.PlanSize = 65536;
-          break;
-         case 4: // 65536
-          Params.FIROrder = 65536;
-          Params.PlanSize = 131072;
-          break;
-         case 5: // 98304
-          Params.FIROrder = 98304;
-          Params.PlanSize = 131072;
-          break;
-        }
-        Deconvolution::SetParameters(Params);
-        save_config();
-      }
-      break;
-
-     case PB_BROWSE:
+    {case PB_BROWSE:
       { FILEDLG fdlg = { sizeof(FILEDLG) };
         char type[_MAX_PATH];
-        fdlg.fl = FDS_OPEN_DIALOG;
-        fdlg.ulUser = FDU_DIR_ENABLE|FDU_DIR_ONLY;
+        fdlg.fl = FDS_OPEN_DIALOG|FDS_CENTER;
+        fdlg.ulUser = FDU_DIR_ONLY;
         fdlg.pszTitle = "Select DRC123 working directory";
         fdlg.pszIType = type;
         strlcpy(fdlg.szFullFile, ControlBase(+GetCtrl(EF_WORKDIR)).Text(), sizeof fdlg.szFullFile);
 
-        (*Ctx.plugin_api->file_dlg)(GetHwnd(), GetHwnd(), &fdlg);
+        (*Ctx.plugin_api->file_dlg)(HWND_DESKTOP, GetHwnd(), &fdlg);
         if (fdlg.lReturn == DID_OK)
-          ControlBase(+GetCtrl(EF_WORKDIR)).Text(fdlg.szFullFile);
-      }
-      break;
-
-     case PB_RELOAD:
-      UpdateDir();
-      break;
-    }
-    return 0;
-
-   case UM_UPDATEDESCR:
-    { ControlBase descr(+GetCtrl(ST_DESCR));
-      ControlBase enabled(+GetCtrl(CB_ENABLE));
-      if (!Params.FilterFile)
-      { descr.Text("No working directory");
-        goto disable;
-      }
-      if (!Kernel.Load(Params.FilterFile))
-      { descr.Text(strerror(errno));
-       disable:
-        Result.Detach();
-        enabled.Enabled(false);
-        return 0;
-      }
-      Result.Attach(GetCtrl(CC_RESULT));
-      descr.Text(Kernel.Description.length() ? Kernel.Description.cdata() : "no description");
-      enabled.Enabled(true);
-    }
-    return 0;
-  }
-  return PageBase::DlgProc(msg, mp1, mp2);
-}
-
-void Frontend::DeconvolutionPage::UpdateDir()
-{ ListBox lb(+GetCtrl(LB_KERNEL));
-  ControlBase descr(+GetCtrl(ST_DESCR));
-  lb.DeleteAll();
-  xstringbuilder path;
-  path.append(EntryField(+GetCtrl(EF_WORKDIR)).Text());
-  if (path.length())
-  { if (path[path.length()-1] != '\\' && path[path.length()-1] != '/')
-      path.append('\\');
-    size_t pathlen = path.length();
-    path.append("*.target");
-    HDIR hdir = HDIR_CREATE;
-    char buf[1024];
-    ULONG count = 100;
-    APIRET rc = DosFindFirst(path.cdata(), &hdir,
-      FILE_ARCHIVED|FILE_READONLY|FILE_HIDDEN,
-      &buf, sizeof buf, &count, FIL_STANDARD);
-    switch (rc)
-    {default:
-      descr.Text(os2_strerror(rc, buf, sizeof buf));
-      break;
-     case NO_ERROR:
-      const char* names[100];
-      int selected = LIT_NONE;
-      const char* currentname = Params.FilterFile ? sfnameext2(Params.FilterFile) : NULL;
-      do
-      { FILEFINDBUF3* fb = (FILEFINDBUF3*)buf;
-        const char** np = names;
-        for(;;)
-        { // selected entry?
-          if (currentname && stricmp(currentname, sfnameext2(fb->achName)) == 0)
-          { selected = np - names;
-            path.erase(pathlen);
-            path.append(fb->achName);
+        { size_t len = strlen(fdlg.szFullFile);
+          if (len && !url123::isPathDelimiter(fdlg.szFullFile[len-1]))
+          { fdlg.szFullFile[len] = '\\';
+            fdlg.szFullFile[len+1] = 0;
           }
-          // store entry
-          *np++ = fb->achName;
-          // next entry
-          if (!fb->oNextEntryOffset)
-            break;
-          fb = (FILEFINDBUF3*)((char*)fb + fb->oNextEntryOffset);
+          ControlBase(+GetCtrl(EF_WORKDIR)).Text(fdlg.szFullFile);
         }
-        // insert items
-        lb.InsertItems(names, np - names, LIT_END);
-        // next package
-        count = 100;
-      } while (DosFindNext(hdir, &buf, sizeof buf, &count) == NO_ERROR);
-      // Select item
-      if (selected != LIT_NONE)
-      { lb.Select(selected);
-        Params.FilterFile = path.get();
-      } else
-      { Params.FilterFile.reset();
-        CheckBox(+GetCtrl(CB_ENABLE)).Enabled(false);
       }
-      PostMsg(UM_UPDATEDESCR, 0, 0);
+      break;
+     case PB_CURRENT:
+      { const char* url = (*Ctx.plugin_api->exec_command)("current song");
+        if (url && *url)
+          EntryField(+GetCtrl(EF_RECURI)).Text(url);
+      }
+      break;
     }
+    return 0;
 
-  } else
-  { // No working directory
-    descr.Text("No working directory");
+   case WM_HELP:
+    DEBUGLOG(("drc123:Frontend::ConfigurationPage::DlgProc: WM_HELP %u, %u, %u\n",
+      SHORT1FROMMP(mp1), SHORT1FROMMP(mp2), SHORT2FROMMP(mp2)));
+    switch (SHORT1FROMMP(mp1))
+    {case PB_HELP:
+      { HWND hlp = WinQueryHelpInstance(GetHwnd());
+        if ( hlp != NULLHANDLE
+          && WinSendMsg(hlp, HM_DISPLAY_HELP, MPFROMSHORT(DLG_FRONTEND), MPFROMSHORT(HM_RESOURCEID)) == 0 )
+          return 0;
+      }
+    }
+    break;
+  }
+  return PageBase::DlgProc(msg, mp1, mp2);
+}
+
+
+void Frontend::FilePage::SetModified()
+{ if (Modified)
+    return;
+  Modified = true;
+  if (WinQueryWindowTextLength(+GetCtrl(EF_FILE)))
+    ControlBase(+GetCtrl(PB_SAVE)).Enabled(true);
+}
+
+void Frontend::FilePage::ClearModified()
+{ if (Modified)
+    return;
+  Modified = false;
+  ControlBase(+GetCtrl(PB_SAVE)).Enabled(false);
+}
+
+MRESULT Frontend::FilePage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
+{
+  switch (msg)
+  {case WM_INITDLG:
+    // load initial file content
+    ControlBase(+GetCtrl(PB_SAVE)).Enabled(false);
+    PostCommand(PB_RELOAD);
+    break;
+
+   case WM_COMMAND:
+    switch (SHORT1FROMMP(mp1))
+    {case PB_LOAD:
+      if (LoadFile())
+      { ClearModified();
+        LoadControlValues();
+      }
+      break;
+     case PB_SAVE:
+      StoreControlValues();
+      if (SaveFile())
+        ClearModified();
+      break;
+     case PB_RELOAD:
+      if (DoLoadFile(NULL))
+      { ClearModified();
+        LoadControlValues();
+      }
+      break;
+    }
+    return 0;
+
+   case WM_CONTROL:
+    switch (SHORT1FROMMP(mp1))
+    {case EF_FILE:
+      if (SHORT2FROMMP(mp1) == EN_CHANGE && Modified)
+        ControlBase(+GetCtrl(PB_SAVE)).Enabled(WinQueryWindowTextLength(HWNDFROMMP(mp2)) != 0);
+      return 0;
+     case ML_DESCR:
+      if (SHORT2FROMMP(mp1) == MLN_CHANGE)
+        SetModified();
+      return 0;
+    }
+    if (SHORT2FROMMP(mp1) == BKN_PAGESELECTED && SHORT1FROMMP(mp1) == ControlBase(GetHwnd()).ID())
+    { PAGESELECTNOTIFY& pn = *(PAGESELECTNOTIFY*)PVOIDFROMMP(mp2);
+      if (pn.ulPageIdCur == GetPageID())
+        StoreControlValues();
+      if (pn.ulPageIdNew == GetPageID())
+        LoadControlValues();
+    }
+    return 0;
+  }
+
+  return PageBase::DlgProc(msg, mp1, mp2);
+}
+
+void Frontend::FilePage::LoadControlValues(const DataFile& data)
+{
+  bool have_filename = !!data.FileName.length();
+  ControlBase(+GetCtrl(PB_SAVE)).Enabled(have_filename);
+  ControlBase(+GetCtrl(EF_FILE)).Text(have_filename ? url123::normalizeURL(data.FileName).getShortName().cdata() : "");
+  ControlBase(+GetCtrl(ML_DESCR)).Text(data.Description);
+}
+
+void Frontend::FilePage::StoreControlValues(DataFile& data)
+{ data.Description = ControlBase(+GetCtrl(ML_DESCR)).Text();
+  const xstring& file = ControlBase(+GetCtrl(EF_FILE)).Text();
+  if (file.length())
+    data.FileName = xstring(Filter::WorkDir) + file;
+  else
+    data.FileName = xstring::empty;
+}
+
+LONG Frontend::FilePage::DoLoadFileDlg(FILEDLG& fdlg)
+{ (*Ctx.plugin_api->file_dlg)(HWND_DESKTOP, GetHwnd(), &fdlg);
+  return fdlg.lReturn == DID_OK && !DoLoadFile(fdlg.szFullFile)
+    ? 0 : fdlg.lReturn;
+}
+
+bool Frontend::FilePage::LoadFile()
+{
+  FILEDLG fdlg = { sizeof(FILEDLG) };
+  fdlg.fl = FDS_OPEN_DIALOG|FDS_CENTER|FDS_FILTERUNION;
+  fdlg.ulUser = FDU_FILE_ONLY;
+  strncpy(fdlg.szFullFile, xstring(Filter::WorkDir), sizeof fdlg.szFullFile);
+  switch (DoLoadFileDlg(fdlg))
+  {case DID_OK:
+    return true;
+   default:
+    // failed
+    WinMessageBox(HWND_DESKTOP, GetHwnd(), strerror(errno), "Failed to load file", 0, MB_OK|MB_ERROR|MB_MOVEABLE);
+   case DID_CANCEL:
+    return false;
   }
 }
 
-
-MRESULT Frontend::GeneratePage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
+bool Frontend::FilePage::SaveFile()
 {
-  return PageBase::DlgProc(msg, mp1, mp2);
-}
-
-MRESULT Frontend::MeasurePage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
-{
-  return PageBase::DlgProc(msg, mp1, mp2);
-}
-
-MRESULT Frontend::CalibratePage::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
-{
-  return PageBase::DlgProc(msg, mp1, mp2);
+  const xstring& err = DoSaveFile();
+  if (!err)
+    return true;
+  // failed
+  xstringbuilder sb;
+  sb.append(err);
+  sb.append('\n');
+  sb.append(strerror(errno));
+  WinMessageBox(HWND_DESKTOP, GetHwnd(), sb, "Failed to save file", 0, MB_OK|MB_ERROR|MB_MOVEABLE);
+  return false;
 }

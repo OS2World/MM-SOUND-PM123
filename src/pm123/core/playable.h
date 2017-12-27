@@ -203,6 +203,7 @@ class Playable
   /// small, it looks for identical or similar objects in the current collection content first.
   /// The content of the vector is destroyed in general.
   /// The function must be called from synchronized context.
+  /// It is up to the caller to raise change events.
   bool                      UpdateCollection(const vector<APlayable>& newcontent);
   /// InfoChange Events from the children
   void                      ChildChangeNotification(const PlayableChangeArgs& args);
@@ -326,8 +327,8 @@ class Playable
   /// @param decoder Name of the decoder to use for saving. Must be valid.
   /// @param format Format to save. Depending on the decoder this might be \c NULL.
   /// @param relative Use relative paths in the playlist.
-  /// @return true: succeeded.
-  bool                      Save(const url123& dest, const char* decoder, const char* format, bool relative);
+  /// @return 0: succeeded.
+  int                       Save(const url123& dest, const char* decoder, const char* format, bool relative);
 
  private: // Internal dispatcher functions
   virtual const Playable&   DoGetPlayable() const;

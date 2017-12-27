@@ -143,7 +143,6 @@ void GlueImp::Virtualize(int i)
   Filter& fil = (Filter&)*FilterPlugs[i];
   // Virtualize procedures
   FILTER_PARAMS2 par;
-  par.size                   = sizeof par;
   par.output_command         = Procs.output_command;
   par.output_playing_samples = Procs.output_playing_samples;
   par.output_request_buffer  = Procs.output_request_buffer;
@@ -151,9 +150,9 @@ void GlueImp::Virtualize(int i)
   par.output_playing_pos     = Procs.output_playing_pos;
   par.output_playing_data    = Procs.output_playing_data;
   par.a                      = Procs.A;
-  par.output_event           = OParams.OutEvent;
-  par.w                      = OParams.W;
-  if (!fil.Initialize(&par))
+  par.output_event           = (void DLLENTRYPF()(struct FILTER_STRUCT*, OUTEVENTTYPE))OParams.OutEvent;
+  par.w                      = (struct FILTER_STRUCT*)OParams.W;
+  if (!fil.Initialize(par))
   { EventHandler::PostFormat(MSG_WARNING, "The filter plug-in %s failed to initialize.", fil.ModRef->Key.cdata());
     FilterPlugs.erase(i);
     Virtualize(i-1);
@@ -166,24 +165,24 @@ void GlueImp::Virtualize(int i)
   Procs.output_commit_buffer   = par.output_commit_buffer;
   Procs.output_playing_pos     = par.output_playing_pos;
   Procs.output_playing_data    = par.output_playing_data;
-  Procs.A                      = fil.GetProcs().F;
-  void DLLENTRYP(last_output_event)(void* w, OUTEVENTTYPE event) = OParams.OutEvent;
+  Procs.A                      = fil.GetFilterPtr();
+  void DLLENTRYP(last_output_event)(struct FILTER_STRUCT* w, OUTEVENTTYPE event) = (void DLLENTRYPF()(struct FILTER_STRUCT*, OUTEVENTTYPE))OParams.OutEvent;
   // next filter
   Virtualize(i-1);
   // store new callback if virtualized by the plug-in.
   BOOL vcallback = par.output_event != last_output_event;
   last_output_event = par.output_event; // swap...
-  par.output_event  = OParams.OutEvent;
-  par.w             = OParams.W;
+  par.output_event  = (void DLLENTRYPF()(struct FILTER_STRUCT*, OUTEVENTTYPE))OParams.OutEvent;
+  par.w             = (struct FILTER_STRUCT*)OParams.W;
   if (vcallback)
   { // set params for next instance.
-    OParams.OutEvent = last_output_event;
-    OParams.W        = fil.GetProcs().F;
+    OParams.OutEvent = (void DLLENTRYPF()(void*, OUTEVENTTYPE))last_output_event;
+    OParams.W        = fil.GetFilterPtr();
     DEBUGLOG(("Glue::Virtualize: callback virtualized: %p %p\n", OParams.OutEvent, OParams.W));
   }
   if (par.output_event != last_output_event)
   { // now update the decoder event
-    (*fil.GetProcs().filter_update)(fil.GetProcs().F, &par);
+    fil.UpdateEvent(par);
     DEBUGLOG(("Glue::Virtualize: callback update: %p %p\n", par.output_event, par.w));
   }
 }
@@ -270,7 +269,7 @@ ULONG GlueImp::DecCommand(DECMSGTYPE msg)
 
 /* invoke decoder to play an URL */
 ULONG Glue::DecPlay(APlayable& song, PM123_TIME offset, PM123_TIME start, PM123_TIME stop)
-{ DEBUGLOG(("Glue::DecPlay(&%p{%s}, %f, %f,%f)\n", &song, song.DebugName().cdata(), offset, start, stop));
+{ DEBUGLOG(("Glue::DecPlay(&%p{%s}, %g, %g,%g)\n", &song, song.DebugName().cdata(), offset, start, stop));
   ASSERT((song.GetInfo().tech->attributes & TATTR_SONG));
   // Uninit current DecPlug if any
   DecClose();
@@ -518,7 +517,7 @@ GlueRequestBuffer(void* a, const FORMAT_INFO2* format, float** buf)
 
 PROXYFUNCIMP(void DLLENTRY, GlueImp)
 GlueCommitBuffer(void* a, int len, PM123_TIME posmarker)
-{ DEBUGLOG(("GlueImp::GlueCommitBuffer(%p, %i, %f) - %u\n", a, len, posmarker, GlueImp::Initialized));
+{ DEBUGLOG(("GlueImp::GlueCommitBuffer(%p, %i, %g) - %u\n", a, len, posmarker, GlueImp::Initialized));
   if (!GlueImp::Initialized)
     return;
   bool send_playstop = false;

@@ -152,15 +152,17 @@ class CtrlImp
   /// If we try to move the current song pointer out of the range of the that that \a si relies on,
   /// the function returns false and \a si is in reset state.
          bool  SkipCore(SongIterator& si, int count);
-  /// Jump to the location si. The function will destroy the content of \a si.
-  /// @param newscan The parameter \a newscan can be used to update the scan mode at the same time.
-  /// If it is non-zero a the action takes place. Therefore some additional bit have to be set
-  /// if the scan mode should be set to \c DECFAST_NORMAL_PLAY.
+  /// Result of NavigateCore
   enum NavigateResult
   { NR_OK      ///< Navigation succeeded.
   , NR_Failed  ///< Navigation error, Error info placed in ControlCommand.
   , NR_NoScan  ///< Navigation OK, but failed to set scan mode.
-  }            NavigateCore(Location& si, signed char newscan = 2);
+  };
+  /// Jump to the location si. The function will destroy the content of \a si.
+  /// @param newscan The parameter \a newscan can be used to update the scan mode at the same time.
+  /// If it is non-zero a the action takes place. Therefore some additional bit have to be set
+  /// if the scan mode should be set to \c DECFAST_NORMAL_PLAY.
+  NavigateResult NavigateCore(Location& si, signed char newscan = 2);
   /// Load new root into the player.
   /// @param pe New item to load or NULL if none.
          void  LoadCore(PrefetchEntry* pe);
@@ -333,7 +335,7 @@ ULONG CtrlImp::DecoderStart(PrefetchEntry& pe, bool reverse)
   PM123_TIME at = start;
   if (pe.Loc.GetPosition() >= 0)
     at = pe.Loc.GetPosition();
-  
+
   if (Scan < 0 && reverse)
   { if (stop > 0)
     { at = stop - 1.; // do not seek to the end, because this will cause problems.
@@ -349,7 +351,7 @@ ULONG CtrlImp::DecoderStart(PrefetchEntry& pe, bool reverse)
   }
 
   IsSeeking = at > 0;
-  ULONG rc = Glue::DecPlay(song, pe.Offset-start, at, stop);
+  ULONG rc = Glue::DecPlay(song, pe.Offset, at, stop);
   if (rc != 0)
     return rc;
 
@@ -467,7 +469,7 @@ CtrlImp::NavigateResult CtrlImp::NavigateCore(Location& si, signed char newscan)
 { DEBUGLOG(("Ctrl::NavigateCore({%s}, %u) - %s\n", si.Serialize().cdata(), newscan, Current().Loc.Serialize().cdata()));
   SongIterator& curloc = PrefetchList[PrefetchList.size()-1]->Loc;
   // Move forward to the next Song, if the current item is a playlist.
-  //Current().Loc.NavigateCount(SyncJob, 0, TATTR_SONG);
+  si.NavigateCount(Job::SyncJob, 0, TATTR_SONG);
   const bool was_playing = Glue::OutInitialized();
 
   // Check whether the current song has changed?
@@ -797,7 +799,12 @@ void CtrlImp::MsgPlayStop()
     return;
 
   if (playing)
-  { // start playback
+  { if (!PrefetchList.size())
+    { // no song
+      Reply(RC_NoSong);
+      return;
+    }
+    // start playback
     APlayable* pp = Current().Loc.GetCurrent();
     if (pp == NULL)
     { Reply(RC_NoSong);
@@ -1046,12 +1053,12 @@ void CtrlImp::MsgSave()
   Savename = StrArg;
 
   if (Glue::DecInitialized())
-  { ULONG rc = Glue::DecSave(Savename);
+  { // TODO: is it really a good idea to save different streams into the same file???
+    ULONG rc = Glue::DecSave(Savename);
     if (rc)
     { ReplyDecoderError(rc);
       return;
   } }
-  // TODO: is it really a good idea to save different streams into the same file???
   Reply(RC_OK);
 }
 

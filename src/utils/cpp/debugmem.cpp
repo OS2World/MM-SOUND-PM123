@@ -27,6 +27,9 @@
  */
 
 
+//#undef DEBUG_LOG
+//#define DEBUG_LOG 2
+
 #include <stdlib.h>
 #include <memory.h>
 #include <debuglog.h>
@@ -54,14 +57,14 @@ void* operator new(size_t len)
   ++storage;
   memset(storage, NEW_MAGIC, len);
   *(int*)((char*)storage+len) = SCALAR_MAGIC;
-  DEBUGLOG(("operator new(%u) : %p\n", len, storage));
+  DEBUGLOG2(("operator new(%u) : %p\n", len, storage));
   return storage;
 }
 
 void operator delete(void* ptr)
 { if (!ptr)
     return;
-  DEBUGLOG(("operator delete(%p)\n", ptr));
+  DEBUGLOG2(("operator delete(%p)\n", ptr));
   preamble* storage = (preamble*)ptr -1;
   ASSERT(storage->magic == SCALAR_MAGIC);
   ASSERT(*(unsigned*)((char*)ptr+storage->length) == SCALAR_MAGIC && storage->length <= 0x8000000);
@@ -80,14 +83,14 @@ void* operator new[](size_t len)
   storage->magic = ARRAY_MAGIC;
   ++storage;
   *(unsigned*)((char*)storage+len) = ARRAY_MAGIC;
-  DEBUGLOG(("operator new[](%u) : %p\n", len, storage));
+  DEBUGLOG2(("operator new[](%u) : %p\n", len, storage));
   return storage;
 }
 
 void operator delete[](void* ptr)
 { if (!ptr)
     return;
-  DEBUGLOG(("operator delete[](%p)\n", ptr));
+  DEBUGLOG2(("operator delete[](%p)\n", ptr));
   preamble* storage = (preamble*)ptr -1;
   ASSERT(storage->magic == ARRAY_MAGIC);
   ASSERT(*(unsigned*)((char*)ptr+storage->length) == ARRAY_MAGIC && storage->length <= 0x8000000);

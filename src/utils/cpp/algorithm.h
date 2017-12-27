@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2007 M.Mueller
+ * Copyright 2007-2013 M.Mueller
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -35,12 +35,12 @@
 #include <stdlib.h>
 
 #ifdef __GNUC__
-#define sort_comparer int (*C)(const K& k, const T& e)
+#define sort_comparer(t1,t2) int (*C)(const t1& k, const t2& e)
 #else
 // Watcom C++ and IBM C++ seem not to support template parameters that depend on previous template args.
 // So we fall back to an unchecked pointer in this case.
 // But keep in mind that the implementation will sadly fail on anything but the above.
-#define sort_comparer void* C
+#define sort_comparer(t1,t2) void* C
 #endif
 
 /* Algorithmns */
@@ -119,8 +119,8 @@ inline bool binary_search( const void* key, size_t& pos,
 /// They are simply passed to \a *fcmp.
 /// If the array contains equal elements (with respect to \a *fcmp) it is not defined which element is returned.
 template <class T, class K>
-inline bool binary_search(K* key, size_t& pos, T* data, size_t num, int (*fcmp)(K* key, T* elem))
-{ return binary_search(key, pos, (const void**)data, num, sizeof(T), (int (*)(const void*, const void*))fcmp);
+inline bool binary_search(K& key, size_t& pos, T* data, size_t num, int (*fcmp)(K& key, T& elem))
+{ return binary_search(&key, pos, (const void*const*)data, num, sizeof(T), (int (*)(const void*, const void*))fcmp);
 }
 /// Generic binary search (strongly typed)
 /// @tparam T element type
@@ -141,8 +141,8 @@ inline bool binary_search(K* key, size_t& pos, T* data, size_t num, int (*fcmp)(
 /// They are simply passed to \a *fcmp.
 /// If the array contains equal elements (with respect to \a *fcmp) it is not defined which element is returned.
 template <class T, class K>
-inline bool binary_search(K* key, size_t& pos, T*const* data, size_t num, int (*fcmp)(K* key, T* elem))
-{ return binary_search(key, pos, (const void**)data, num, (int (*)(const void*, const void*))fcmp);
+inline bool binary_search(K& key, size_t& pos, T*const* data, size_t num, int (*fcmp)(K& key, const T& elem))
+{ return binary_search(&key, pos, (const void*const*)data, num, (int (*)(const void*, const void*))fcmp);
 }
 /// Generic binary search (strongly typed)
 /// @tparam T element type
@@ -162,8 +162,8 @@ inline bool binary_search(K* key, size_t& pos, T*const* data, size_t num, int (*
 /// They are simply passed to \a *fcmp.
 /// If the array contains equal elements (with respect to \a *fcmp) it is not defined which element is returned.
 template <class T, class K>
-inline bool binary_search(K* key, size_t& pos, const vector<T>& data, int (*fcmp)(K* key, T* elem))
-{ return binary_search(key, pos, data, data.size(), (int (*)(const void*, const void*))fcmp);
+inline bool binary_search(K& key, size_t& pos, const vector<T>& data, int (*fcmp)(K& key, const T& elem))
+{ return binary_search(&key, pos, (const void*const*)data.begin(), data.size(), (int (*)(const void*, const void*))fcmp);
 }
 
 // rotate pointer array in place

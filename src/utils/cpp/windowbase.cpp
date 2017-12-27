@@ -61,7 +61,7 @@ DialogBase::DialogBase(ULONG rid, HMODULE module, DlgFlags flags)
 DialogBase::~DialogBase()
 { DEBUGLOG(("DialogBase(%p{%u})::~DialogBase()\n", this, DlgRID));
   if (HwndFrame != NULLHANDLE)
-    WinDestroyWindow(GetHwnd());
+    WinDestroyWindow(HwndFrame);
 }
 
 MRESULT EXPENTRY wb_DlgProcStub(HWND hwnd, ULONG msg, MPARAM mp1, MPARAM mp2)
@@ -182,6 +182,18 @@ void DialogBase::PostMsg(ULONG msg, MPARAM mp1, MPARAM mp2)
   PMRASSERT(WinPostMsg(HwndFrame, msg, mp1, mp2));
 }
 
+bool DialogBase::PullMsg(ULONG msg, MPARAM* mp1, MPARAM* mp2)
+{ DEBUGLOG(("DialogBase(%p)::PullMsg(%lu,)\n", this, msg));
+  QMSG qmsg;
+  if (!WinPeekMsg(NULL, &qmsg, HwndFrame, msg, msg, PM_REMOVE))
+    return false;
+  if (mp1)
+    *mp1 = qmsg.mp1;
+  if (mp2)
+    *mp2 = qmsg.mp2;
+  return true;
+}
+
 void DialogBase::SetHelpMgr(HWND hhelp)
 { DEBUGLOG(("DialogBase(%p)::SetHelpMgr(%p)\n", this, hhelp));
   PMRASSERT(WinAssociateHelpInstance(hhelp, GetHwnd()));
@@ -203,6 +215,18 @@ NotebookDialogBase::NotebookDialogBase(ULONG rid, HMODULE module, DlgFlags flags
 : DialogBase(rid, module, flags)
 , NotebookCtrl(NULLHANDLE)
 {}
+
+NotebookDialogBase::~NotebookDialogBase()
+{ // notify current page about deselection
+  PAGESELECTNOTIFY pn;
+  pn.ulPageIdCur = NotebookCtrl.CurrentPageID();
+  PageBase* page = PageFromID(pn.ulPageIdCur);
+  if (page != NULL)
+  { pn.hwndBook = NotebookCtrl.Hwnd;
+    pn.ulPageIdNew = 0;
+    WinSendMsg(page->GetHwnd(), WM_CONTROL, MPFROM2SHORT(ControlBase(page->GetHwnd()).ID(), BKN_PAGESELECTEDPENDING), MPFROMP(&pn));
+  }
+}
 
 void NotebookDialogBase::StartDialog(HWND owner, ULONG nbid, HWND parent)
 { DEBUGLOG(("NotebookDialogBase(%p)::StartDialog(%p, %u, %p)\n", this, owner, nbid, parent));
@@ -239,6 +263,42 @@ NotebookDialogBase::PageBase* NotebookDialogBase::PageFromID(ULONG pageid)
     if ((*pp)->PageID == pageid)
       return *pp;
   return NULL;
+}
+
+MRESULT NotebookDialogBase::DlgProc(ULONG msg, MPARAM mp1, MPARAM mp2)
+{
+  switch (msg)
+  {case WM_CONTROL:
+    if (SHORT1FROMMR(mp1) == NotebookCtrl.ID())
+    { switch (SHORT2FROMMP(mp1))
+      { // propagate page change notifications to page windows
+       case BKN_PAGESELECTEDPENDING:
+        { PAGESELECTNOTIFY& notify = *(PAGESELECTNOTIFY*)PVOIDFROMMP(mp2);
+          if (notify.ulPageIdNew && notify.ulPageIdCur)
+          { HWND page = PageFromID(notify.ulPageIdCur)->GetHwnd();
+            WinSendMsg(page, msg, MPFROM2SHORT(ControlBase(page).ID(), BKN_PAGESELECTEDPENDING), mp2);
+          }
+        }
+        break;
+       case BKN_PAGESELECTED:
+        { PAGESELECTNOTIFY& notify = *(PAGESELECTNOTIFY*)PVOIDFROMMP(mp2);
+          if (notify.ulPageIdCur)
+          { PageBase* page = PageFromID(notify.ulPageIdCur);
+            if (page != NULL)
+              WinSendMsg(page->GetHwnd(), msg, MPFROM2SHORT(ControlBase(page->GetHwnd()).ID(), BKN_PAGESELECTED), mp2);
+          }
+          if (notify.ulPageIdNew)
+          { PageBase* page = PageFromID(notify.ulPageIdNew);
+            if (page != NULL) // We sometimes get called with an invalid ulPageIdNew.
+              WinSendMsg(page->GetHwnd(), msg, MPFROM2SHORT(ControlBase(page->GetHwnd()).ID(), BKN_PAGESELECTED), mp2);
+          }
+        }
+        break;
+      }
+    }
+    break;
+  }
+  return DialogBase::DlgProc(msg, mp1, mp2);
 }
 
 

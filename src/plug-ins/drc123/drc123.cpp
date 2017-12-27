@@ -30,8 +30,9 @@
 #define  INCL_DOS
 
 #include "drc123.h"
-#include "frontend.h"
+#include "Frontend.h"
 #include "Deconvolution.h"
+#include "Generate.h"
 #include "Measure.h"
 #include "Calibrate.h"
 
@@ -44,19 +45,30 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 #include <debuglog.h>
-
-#undef  VERSION
-#define VERSION "Digital Room Correction Version 1.0"
 
 
 PLUGIN_CONTEXT Ctx;
 
 
 inline static void do_load_prf_value(const char* name, bool& target)
-{ (*Ctx.plugin_api->profile_query)(name, &target, 1);
+{ char c;
+  if ((*Ctx.plugin_api->profile_query)(name, &c, 1) > 0)
+    target = !!(c & 1);
 }
+/*static void do_load_prf_value(const char* name, double& target)
+{ char buffer[32];
+  int len = (*Ctx.plugin_api->profile_query)(name, &buffer, sizeof buffer - 1);
+  if (len >= 0 && len < 32)
+  { buffer[len] = 0;
+    int len2;
+    double val;
+    if (sscanf(buffer, "%lf%n", &val, &len2) && len2 == len)
+      target = val;
+  }
+}*/
 static void do_load_prf_value(const char* name, xstring& target)
 { int len = (*Ctx.plugin_api->profile_query)(name, NULL, 0);
   if (len >= 0)
@@ -70,6 +82,25 @@ static void do_load_prf_value(const char* name, volatile xstring& target)
     target.swap(value);
   }
 }
+static void do_load_prf_value(const char* name, Generate::Parameters::MeasurementSet& target)
+{ int len = (*Ctx.plugin_api->profile_query)(name, NULL, 0);
+  if (!len < 0)
+    return;
+  char* cp = (char*)alloca(len+1);
+  (*Ctx.plugin_api->profile_query)(name, cp, len);
+  cp[len] = '\0';
+
+  target.clear();
+  while (*cp)
+  { char* cpe = strchr(cp, '\n');
+    if (!cpe)
+      break;
+    Measure::MeasureFile* file = new Measure::MeasureFile();
+    file->FileName.assign(cp, cpe - cp);
+    target.get(file->FileName) = file;
+    cp = cpe + 1;
+  }
+}
 template <class T>
 static void do_load_prf_value(const char* name, volatile T& target)
 { T value;
@@ -80,8 +111,20 @@ static void do_load_prf_value(const char* name, volatile T& target)
 inline static void do_save_prf_value(const char* name, bool value)
 { (*Ctx.plugin_api->profile_write)(name, &value, 1);
 }
+/*static void do_save_prf_value(const char* name, double value)
+{ char buffer[32];
+  (*Ctx.plugin_api->profile_write)(name, buffer, sprintf(buffer, "%lg", value));
+}*/
 inline static void do_save_prf_value(const char* name, xstring value)
 { (*Ctx.plugin_api->profile_write)(name, value.cdata(), value.length());
+}
+static void do_save_prf_value(const char* name, const Generate::Parameters::MeasurementSet& value)
+{ xstringbuilder sb;
+  foreach(const Measure::MeasureFile,*const*, sp, value)
+  { sb.append((*sp)->FileName);
+    sb.append('\0');
+  }
+  (*Ctx.plugin_api->profile_write)(name, sb.cdata(), sb.length());
 }
 template <class T>
 inline static void do_save_prf_value(const char* name, const T value)
@@ -97,294 +140,268 @@ inline static void do_save_prf_value(const char* name, const T value)
 
 static void load_config()
 {
-  Deconvolution::Parameters deconvolution;
-  load_prf_value(deconvolution.FilterFile);
-  load_prf_value(deconvolution.WindowFunction);
-  load_prf_value(deconvolution.Enabled);
-  load_prf_value(deconvolution.FIROrder);
-  load_prf_value(deconvolution.PlanSize);
-  Deconvolution::SetParameters(deconvolution);
-}
+  do_load_prf_value("filter.WorkDir",  Filter::WorkDir);
+  do_load_prf_value("openloop.RecURI", OpenLoop::RecURI);
 
+  { Deconvolution::Parameters deconvolution;
+    Deconvolution::GetDefaultParameters(deconvolution);
+    load_prf_value(deconvolution.TargetFile);
+    load_prf_value(deconvolution.WindowFunction);
+    load_prf_value(deconvolution.Filter);
+    load_prf_value(deconvolution.Enabled);
+    load_prf_value(deconvolution.FIROrder);
+    load_prf_value(deconvolution.PlanSize);
+    Deconvolution::SetParameters(deconvolution);
+  }
+  { Frontend::DeconvolutionViewParams& deconvolution = Frontend::DeconvolutionView;
+    load_prf_value(deconvolution.ViewMode);
+    load_prf_value(deconvolution.FreqLow);
+    load_prf_value(deconvolution.FreqHigh);
+    load_prf_value(deconvolution.GainLow);
+    load_prf_value(deconvolution.GainHigh);
+    load_prf_value(deconvolution.DelayLow);
+    load_prf_value(deconvolution.DelayHigh);
+    load_prf_value(deconvolution.TimeLow);
+    load_prf_value(deconvolution.TimeHigh);
+    load_prf_value(deconvolution.TimeAuto);
+    load_prf_value(deconvolution.KernelLow);
+    load_prf_value(deconvolution.KernelHigh);
+  }
+  { do_load_prf_value("generate.ViewMode", Frontend::GenerateView);
+    SyncAccess<Generate::TargetFile> pdata(Generate::GetData());
+    Generate::TargetFile& generate = *pdata;
+    load_prf_value(generate.FileName);
+    load_prf_value(generate.Description);
+    load_prf_value(generate.Measurements);
+    load_prf_value(generate.FreqLow);
+    load_prf_value(generate.FreqHigh);
+    load_prf_value(generate.FreqBin);
+    load_prf_value(generate.FreqFactor);
+    load_prf_value(generate.NoPhase);
+    load_prf_value(generate.NormFreqLow);
+    load_prf_value(generate.NormFreqHigh);
+    load_prf_value(generate.NormMode);
+    load_prf_value(generate.LimitGain);
+    load_prf_value(generate.GainSmoothing);
+    load_prf_value(generate.LimitDelay);
+    load_prf_value(generate.DelaySmoothing);
+    load_prf_value(generate.InvertHighGain);
+    load_prf_value(generate.GainLow);
+    load_prf_value(generate.GainHigh);
+    load_prf_value(generate.DelayLow);
+    load_prf_value(generate.DelayHigh);
+  }
+  { SyncAccess<Measure::MeasureFile> pdata(Measure::GetData());
+    Measure::MeasureFile& measure = *pdata;
+    load_prf_value(measure.FileName);
+    load_prf_value(measure.Description);
+    load_prf_value(measure.FFTSize);
+    load_prf_value(measure.DiscardSamp);
+    load_prf_value(measure.RefFMin);
+    load_prf_value(measure.RefFMax);
+    load_prf_value(measure.RefExponent);
+    load_prf_value(measure.RefSkipEven);
+    load_prf_value(measure.RefSkipRand);
+    load_prf_value(measure.RefVolume);
+    load_prf_value(measure.RefFreqFactor);
+    load_prf_value(measure.RefEnergyDist);
+    load_prf_value(measure.AnaFBin);
+    load_prf_value(measure.AnaSwap);
+    load_prf_value(measure.LineNotchFreq);
+    load_prf_value(measure.LineNotchHarmonics);
+    load_prf_value(measure.GainLow);
+    load_prf_value(measure.GainHigh);
+    load_prf_value(measure.DelayLow);
+    load_prf_value(measure.DelayHigh);
+    load_prf_value(measure.VULow);
+    load_prf_value(measure.VUYellow);
+    load_prf_value(measure.VURed);
+    load_prf_value(measure.Mode);
+    load_prf_value(measure.Chan);
+    load_prf_value(measure.CalFile);
+    load_prf_value(measure.MicFile);
+    load_prf_value(measure.DiffOut);
+    load_prf_value(measure.RefIn);
+    load_prf_value(measure.VerifyMode);
+  }
+  { SyncAccess<Calibrate::CalibrationFile> pdata(Calibrate::GetData());
+    Calibrate::CalibrationFile& calibrate = *pdata;
+    load_prf_value(calibrate.FileName);
+    load_prf_value(calibrate.Description);
+    load_prf_value(calibrate.FFTSize);
+    load_prf_value(calibrate.DiscardSamp);
+    load_prf_value(calibrate.RefFMin);
+    load_prf_value(calibrate.RefFMax);
+    load_prf_value(calibrate.RefExponent);
+    load_prf_value(calibrate.RefSkipEven);
+    load_prf_value(calibrate.RefSkipRand);
+    load_prf_value(calibrate.RefVolume);
+    load_prf_value(calibrate.RefFreqFactor);
+    load_prf_value(calibrate.RefEnergyDist);
+    load_prf_value(calibrate.AnaFBin);
+    load_prf_value(calibrate.AnaSwap);
+    load_prf_value(calibrate.LineNotchFreq);
+    load_prf_value(calibrate.LineNotchHarmonics);
+    load_prf_value(calibrate.GainLow);
+    load_prf_value(calibrate.GainHigh);
+    load_prf_value(calibrate.DelayLow);
+    load_prf_value(calibrate.DelayHigh);
+    load_prf_value(calibrate.VULow);
+    load_prf_value(calibrate.VUYellow);
+    load_prf_value(calibrate.VURed);
+    load_prf_value(calibrate.Mode);
+    load_prf_value(calibrate.Gain2Low);
+    load_prf_value(calibrate.Gain2High);
+  }
+}
 
 void save_config()
 {
-  Deconvolution::Parameters deconvolution;
-  Deconvolution::GetParameters(deconvolution);
-  save_prf_value(deconvolution.FilterFile);
-  save_prf_value(deconvolution.WindowFunction);
-  save_prf_value(deconvolution.Enabled);
-  save_prf_value(deconvolution.FIROrder);
-  save_prf_value(deconvolution.PlanSize);
-}
+  do_save_prf_value("filter.WorkDir",  xstring(Filter::WorkDir));
+  do_save_prf_value("openloop.RecURI", xstring(OpenLoop::RecURI));
 
-
-enum FilterMode
-{ MODE_DECONVOLUTION,
-  MODE_MEASURE,
-  MODE_CALIBRATE
-};
-
-static FilterMode CurrentMode;
-
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-#ifndef M_LN10
-#define M_LN10 2.302585093
-#endif
-
-
-
-/* Hamming window
-#define WINDOW_FUNCTION( n, N ) (0.54 - 0.46 * cos( 2 * M_PI * n / N ))
- * Well, since the EQ does not provide more tham 24dB dynamics
- * we should use a much more agressive window function.
- * This is verified by calculations.
- */
-#define WINDOW_FUNCTION( n, N ) (0.8 - 0.2 * cos( 2 * M_PI * n / N ))
-
-#define round(n) ((n) > 0 ? (n) + 0.5 : (n) - 0.5)
-
-
-/********** Ini file stuff */
-
-#if 0
-static void
-load_ini( void )
-{
-  HINI INIhandle;
-
-  memset(bandgain, 0, sizeof bandgain);
-  memset(mute,     0, sizeof mute    );
-
-  eqenabled   = FALSE;
-  lasteq[0]   = 0;
-  newPlansize = 8192;
-  newFIRorder = 4096;
-  locklr      = FALSE;
-
-  if(( INIhandle = open_module_ini()) != NULLHANDLE )
-  {
-    load_ini_value ( INIhandle, newFIRorder );
-    load_ini_value ( INIhandle, newPlansize );
-    load_ini_value ( INIhandle, eqenabled );
-    load_ini_value ( INIhandle, locklr );
-    load_ini_string( INIhandle, lasteq, sizeof( lasteq ));
-
-    close_ini( INIhandle );
-
-    // avoid crash when INI-Content is bad
-    if (newPlansize < 16)
-      newPlansize = 16;
-     else if (newPlansize > MAX_COEF)
-      newPlansize = MAX_COEF;
-    if (newPlansize <= newFIRorder)
-      newFIRorder = newPlansize >> 1;
-    if (newFIRorder > MAX_FIR)
-      newFIRorder = MAX_FIR;
+  { Deconvolution::Parameters deconvolution;
+    Deconvolution::GetParameters(deconvolution);
+    save_prf_value(deconvolution.TargetFile);
+    save_prf_value(deconvolution.WindowFunction);
+    save_prf_value(deconvolution.Filter);
+    save_prf_value(deconvolution.Enabled);
+    save_prf_value(deconvolution.FIROrder);
+    save_prf_value(deconvolution.PlanSize);
   }
-  eqneedinit  = TRUE;
+  { const Frontend::DeconvolutionViewParams& deconvolution = Frontend::DeconvolutionView;
+    save_prf_value(deconvolution.ViewMode);
+    save_prf_value(deconvolution.FreqLow);
+    save_prf_value(deconvolution.FreqHigh);
+    save_prf_value(deconvolution.GainLow);
+    save_prf_value(deconvolution.GainHigh);
+    save_prf_value(deconvolution.DelayLow);
+    save_prf_value(deconvolution.DelayHigh);
+    save_prf_value(deconvolution.TimeLow);
+    save_prf_value(deconvolution.TimeHigh);
+    save_prf_value(deconvolution.TimeAuto);
+    save_prf_value(deconvolution.KernelLow);
+    save_prf_value(deconvolution.KernelHigh);
+  }
+  { do_save_prf_value("generate.ViewMode", Frontend::GenerateView);
+    SyncAccess<Generate::TargetFile> pdata(Generate::GetData());
+    Generate::TargetFile& generate = *pdata;
+    save_prf_value(generate.FileName);
+    save_prf_value(generate.Description);
+    save_prf_value(generate.Measurements);
+    save_prf_value(generate.FreqLow);
+    save_prf_value(generate.FreqHigh);
+    save_prf_value(generate.FreqBin);
+    save_prf_value(generate.FreqFactor);
+    save_prf_value(generate.NoPhase);
+    save_prf_value(generate.NormFreqLow);
+    save_prf_value(generate.NormFreqHigh);
+    save_prf_value(generate.NormMode);
+    save_prf_value(generate.LimitGain);
+    save_prf_value(generate.GainSmoothing);
+    save_prf_value(generate.LimitDelay);
+    save_prf_value(generate.DelaySmoothing);
+    save_prf_value(generate.InvertHighGain);
+    save_prf_value(generate.GainLow);
+    save_prf_value(generate.GainHigh);
+    save_prf_value(generate.DelayLow);
+    save_prf_value(generate.DelayHigh);
+  }
+  { SyncAccess<Measure::MeasureFile> pdata(Measure::GetData());
+    Measure::MeasureFile& measure = *pdata;
+    save_prf_value(measure.FileName);
+    save_prf_value(measure.Description);
+    save_prf_value(measure.FFTSize);
+    save_prf_value(measure.DiscardSamp);
+    save_prf_value(measure.RefFMin);
+    save_prf_value(measure.RefFMax);
+    save_prf_value(measure.RefExponent);
+    save_prf_value(measure.RefSkipEven);
+    save_prf_value(measure.RefSkipRand);
+    save_prf_value(measure.RefVolume);
+    save_prf_value(measure.RefFreqFactor);
+    save_prf_value(measure.RefEnergyDist);
+    save_prf_value(measure.AnaFBin);
+    save_prf_value(measure.AnaSwap);
+    save_prf_value(measure.LineNotchFreq);
+    save_prf_value(measure.LineNotchHarmonics);
+    save_prf_value(measure.GainLow);
+    save_prf_value(measure.GainHigh);
+    save_prf_value(measure.DelayLow);
+    save_prf_value(measure.DelayHigh);
+    save_prf_value(measure.VULow);
+    save_prf_value(measure.VUYellow);
+    save_prf_value(measure.VURed);
+    save_prf_value(measure.Mode);
+    save_prf_value(measure.Chan);
+    save_prf_value(measure.CalFile);
+    save_prf_value(measure.MicFile);
+    save_prf_value(measure.DiffOut);
+    save_prf_value(measure.RefIn);
+    save_prf_value(measure.VerifyMode);
+  }
+  { SyncAccess<Calibrate::CalibrationFile> pdata(Calibrate::GetData());
+    Calibrate::CalibrationFile& calibrate = *pdata;
+    save_prf_value(calibrate.FileName);
+    save_prf_value(calibrate.Description);
+    save_prf_value(calibrate.FFTSize);
+    save_prf_value(calibrate.DiscardSamp);
+    save_prf_value(calibrate.RefFMin);
+    save_prf_value(calibrate.RefFMax);
+    save_prf_value(calibrate.RefExponent);
+    save_prf_value(calibrate.RefSkipEven);
+    save_prf_value(calibrate.RefSkipRand);
+    save_prf_value(calibrate.RefVolume);
+    save_prf_value(calibrate.RefFreqFactor);
+    save_prf_value(calibrate.RefEnergyDist);
+    save_prf_value(calibrate.AnaFBin);
+    save_prf_value(calibrate.AnaSwap);
+    save_prf_value(calibrate.LineNotchFreq);
+    save_prf_value(calibrate.LineNotchHarmonics);
+    save_prf_value(calibrate.GainLow);
+    save_prf_value(calibrate.GainHigh);
+    save_prf_value(calibrate.DelayLow);
+    save_prf_value(calibrate.DelayHigh);
+    save_prf_value(calibrate.VULow);
+    save_prf_value(calibrate.VUYellow);
+    save_prf_value(calibrate.VURed);
+    save_prf_value(calibrate.Mode);
+    save_prf_value(calibrate.Gain2Low);
+    save_prf_value(calibrate.Gain2High);
+  }
 }
-#endif
 
+
+/********** Filter processing stuff */
 
 ULONG DLLENTRY filter_init(Filter** F, FILTER_PARAMS2* params)
-{
-  switch (CurrentMode)
-  {case MODE_DECONVOLUTION:
-    *F = new Deconvolution(*params);
-    return 0;
-   case MODE_MEASURE:
-    *F = new Measure(*params);
-    return 0;
-   case MODE_CALIBRATE:
-    *F = new Calibrate(*params);
-    return 0;
-   default:
-    return 1;
-  }
+{ return (*F = Filter::Factory(*params)) == NULL;
 }
 
 void DLLENTRY filter_update(Filter* F, const FILTER_PARAMS2 *params)
-{
-  F->Update(*params);
+{ F->Update(*params);
 }
 
 BOOL DLLENTRY filter_uninit(Filter* F)
-{
-  delete F;
+{ delete F;
   return TRUE;
 }
 
 /********** GUI stuff *******************************************************/
 
-/*static BOOL
-save_eq( HWND hwnd, float* gains, BOOL* mutes, float preamp )
-{
-  FILEDLG filedialog;
-  FILE*   file;
-  int     i = 0;
-
-  memset( &filedialog, 0, sizeof(FILEDLG));
-  filedialog.cbSize   = sizeof(FILEDLG);
-  filedialog.fl       = FDS_CENTER | FDS_SAVEAS_DIALOG;
-  filedialog.pszTitle = "Save Equalizer as...";
-
-  if( lasteq[0] == 0 ) {
-    strcpy( filedialog.szFullFile, "*.REQ" );
-  } else {
-    strcpy( filedialog.szFullFile, lasteq );
-  }
-
-  WinFileDlg( HWND_DESKTOP, HWND_DESKTOP, &filedialog );
-
-  if( filedialog.lReturn == DID_OK )
-  {
-    strcpy( lasteq, filedialog.szFullFile );
-    file = fopen( filedialog.szFullFile, "w" );
-    if( file == NULL ) {
-      return FALSE;
-    }
-
-    fprintf( file, "#\n# Equalizer created with %s\n# Do not modify!\n#\n", VERSION );
-    fprintf( file, "# Band gains\n" );
-    for( i = 0; i < NUM_BANDS*2; i++ ) {
-      fprintf( file, "%g\n", gains[i] );
-    }
-    fprintf(file, "# Mutes\n" );
-    for( i = 0; i < NUM_BANDS*2; i++ ) {
-      fprintf(file, "%u\n", mutes[i]);
-    }
-    fprintf( file, "# Preamplifier\n" );
-    fprintf( file, "%g\n", preamp );
-
-    fprintf( file, "# End of equalizer\n" );
-    fclose ( file );
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-static
-void drivedir( char* buf, char* fullpath )
-{
-  char drive[_MAX_DRIVE],
-       path [_MAX_PATH ];
-
-  _splitpath( fullpath, drive, path, NULL, NULL );
-  strcpy( buf, drive );
-  strcat( buf, path  );
-}
-
-static BOOL
-load_eq( HWND hwnd, float* gains, BOOL* mutes, float* preamp )
-{
-  FILEDLG filedialog;
-
-  memset( &filedialog, 0, sizeof( FILEDLG ));
-  filedialog.cbSize = sizeof(FILEDLG);
-  filedialog.fl = FDS_CENTER | FDS_OPEN_DIALOG;
-  filedialog.pszTitle = "Load Equalizer";
-  drivedir( filedialog.szFullFile, lasteq );
-  strcat( filedialog.szFullFile, "*.REQ" );
-
-  WinFileDlg( HWND_DESKTOP, HWND_DESKTOP, &filedialog );
-
-  if( filedialog.lReturn == DID_OK )
-  {
-    strcpy( lasteq, filedialog.szFullFile );
-    return load_eq_file( filedialog.szFullFile, gains, mutes, preamp );
-  }
-  return FALSE;
-}
-
-static void
-set_slider( HWND hwnd, int channel, int band, double value )
-{ MRESULT rangevalue;
-  DEBUGLOG2(("realeq:set_slider(%p, %d, %d, %f)\n", hwnd, channel, band, value));
-
-  if (value < -12)
-  { DEBUGLOG(("load_dialog: value out of range %d, %d, %f\n", channel, band, value));
-    value = -12;
-  } else if (value > 12)
-  { DEBUGLOG(("load_dialog: value out of range %d, %d, %f\n", channel, band, value));
-    value = 12;
-  }
-
-  rangevalue = WinSendDlgItemMsg( hwnd, 200+NUM_BANDS*channel+band, SLM_QUERYSLIDERINFO,
-                                  MPFROM2SHORT( SMA_SLIDERARMPOSITION, SMA_RANGEVALUE ), 0 );
-
-  WinSendDlgItemMsg( hwnd, 200+NUM_BANDS*channel+band, SLM_SETSLIDERINFO,
-                     MPFROM2SHORT( SMA_SLIDERARMPOSITION, SMA_RANGEVALUE ),
-                     MPFROMSHORT( (value/24.+.5) * (SHORT2FROMMR(rangevalue) - 1) +.5 ));
-}*/
-
-static void
-load_dialog( HWND hwnd )
-{
-  dlg_addcontrol( hwnd, WC_CIRCULARSLIDER, "Volume", WS_VISIBLE|WS_TABSTOP|WS_GROUP|CSS_PROPORTIONALTICKS|CSS_NOBUTTON|CSS_POINTSELECT,
-                   292, 54, 40, 40, 134, 201, NULL, NULL );
-
-  /*WinCreateWindow( hwnd, WC_CIRCULARSLIDER, "Volume", WS_VISIBLE|WS_TABSTOP|WS_GROUP|CSS_PROPORTIONALTICKS|CSS_NOBUTTON|CSS_POINTSELECT,
-                   2*292, 3*54, 2*40, 3*40, hwnd, WinWindowFromID(hwnd, 133), 201, NULL, NULL );*/
-                   
-  
-  
-  PMRASSERT(cs_init( hwnd, 201, 0, 100, 5, 25, 100 ));
-  PMRASSERT(cs_init( hwnd, 135, 0, 100, 5, 25, 100 ));
-  PMRASSERT(cs_init( hwnd, 134, 0, 100, 5, 25, 100 ));
-
-  /*int i, e;
-
-  for( e = 0; e < 2; e++ ) {
-    for( i = 0; i < NUM_BANDS; i++ ) {
-      SHORT   range;
-
-      // mute check boxes
-      WinSendDlgItemMsg( hwnd, 100 + NUM_BANDS*e + i, BM_SETCHECK, MPFROMCHAR( mute[e][i] ), 0 );
-
-      // sliders
-      range = SHORT2FROMMR( WinSendDlgItemMsg( hwnd, 200 + NUM_BANDS*e + i, SLM_QUERYSLIDERINFO,
-                                               MPFROM2SHORT( SMA_SLIDERARMPOSITION, SMA_RANGEVALUE ), 0 ) );
-          
-      WinSendDlgItemMsg( hwnd, 200 + NUM_BANDS*e + i, SLM_ADDDETENT,
-                         MPFROMSHORT( range - 1 ), 0 );
-      WinSendDlgItemMsg( hwnd, 200 + NUM_BANDS*e + i, SLM_ADDDETENT,
-                         MPFROMSHORT( range >> 1 ), 0 );
-      WinSendDlgItemMsg( hwnd, 200 + NUM_BANDS*e + i, SLM_ADDDETENT,
-                         MPFROMSHORT( 0 ), 0 );
-
-      DEBUGLOG2(("load_dialog: %d %d %g\n", e, i, bandgain[e][i]));
-      set_slider( hwnd, e, i, bandgain[e][i] );
-    }
-  }
-
-  // eq enabled check box
-  WinSendDlgItemMsg( hwnd, EQ_ENABLED, BM_SETCHECK, MPFROMSHORT( eqenabled ), 0 );
-  WinSendDlgItemMsg( hwnd, ID_LOCKLR,  BM_SETCHECK, MPFROMSHORT( locklr ), 0 );
-
-  WinSendDlgItemMsg( hwnd, ID_FIRORDER, SPBM_SETMASTER, MPFROMLONG( NULLHANDLE ), 0 );
-  WinSendDlgItemMsg( hwnd, ID_FIRORDER, SPBM_SETLIMITS, MPFROMLONG( MAX_FIR ), MPFROMLONG( MIN_FIR ));
-  WinSendDlgItemMsg( hwnd, ID_FIRORDER, SPBM_SETCURRENTVALUE, MPFROMLONG( newFIRorder ), 0 );
-  WinSendDlgItemMsg( hwnd, ID_PLANSIZE, SPBM_SETMASTER, MPFROMLONG( NULLHANDLE ), 0 );
-  WinSendDlgItemMsg( hwnd, ID_PLANSIZE, SPBM_SETLIMITS, MPFROMLONG( MAX_COEF ), MPFROMLONG( MIN_COEF ));
-  WinSendDlgItemMsg( hwnd, ID_PLANSIZE, SPBM_SETCURRENTVALUE, MPFROMLONG( newPlansize ), 0 );*/
-}
-
 HWND DLLENTRY plugin_configure(HWND hwnd, HMODULE module)
 {
-  Frontend(hwnd, module).Process();
-  return NULLHANDLE;
+  // By default there are by far too many FP exceptions
+  _control87( EM_INVALID  | EM_DENORMAL  | EM_ZERODIVIDE |
+              EM_OVERFLOW | EM_UNDERFLOW | EM_INEXACT, MCW_EM );
+  return Frontend::Show(hwnd, module);
 }
 
 int DLLENTRY plugin_query(PLUGIN_QUERYPARAM *param)
 {
   param->type         = PLUGIN_FILTER;
   param->author       = "Marcel Mueller";
-  param->desc         = VERSION;
+  param->desc         = "Digital Room Correction Version 1.0a";
   param->configurable = TRUE;
   param->interface    = PLUGIN_INTERFACE_LEVEL;
   return 0;
@@ -394,6 +411,7 @@ int DLLENTRY plugin_query(PLUGIN_QUERYPARAM *param)
 int DLLENTRY plugin_init(const PLUGIN_CONTEXT* ctx)
 {
   Ctx = *ctx;
+  Frontend::Init();
   load_config();
   return 0;
 }

@@ -55,14 +55,6 @@
 #include <debuglog.h>
 
 
-/* file dialog additional flags
-#define  FDU_DIR_ENABLE   0x0001
-#define  FDU_RECURSEBTN   0x0002
-#define  FDU_RECURSE_ON   0x0004
-#define  FDU_RELATIVBTN   0x0008
-#define  FDU_RELATIV_ON   0x0010*/
-
-
 static xstring StartPath;
 const xstring& amp_startpath = StartPath;
 
@@ -74,8 +66,7 @@ const HAB& amp_player_hab = Hab;
 
 
 void amp_fail(const char* fmt, ...)
-{ // TODO: Write error to PM if initialized.
-  va_list va;
+{ va_list va;
   va_start(va, fmt);
   vfprintf(stderr, fmt, va);
   va_end(va);
@@ -293,7 +284,6 @@ int main(int argc, char** argv)
   GUI::Uninit();
 
   Cfg::SaveIni();
-  // TODO: save volume
   Ctrl::Uninit();
 
   ///////////////////////////////////////////////////////////////////////////
